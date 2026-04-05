@@ -1,0 +1,38 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Installer lock
+storage/.installed
+
+# Uploads (não versionar arquivos enviados por usuários)
+public/assets/uploads/*
+!public/assets/uploads/.gitkeep
+
+# Logs
+storage/logs/*.log
+!storage/logs/.gitkeep
+
+# Cache
+storage/cache/*
+!storage/cache/.gitkeep
+
+# Composer
+vendor/
+
+# Node (se usar)
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# PHP
+*.log

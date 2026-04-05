@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php -l /Volumes/projetos/IA/chatbot/app/Models/Contact.php)",
+      "Bash(php -l /Volumes/projetos/IA/chatbot/app/Models/Chat.php)",
+      "Bash(php -l /Volumes/projetos/IA/chatbot/app/Models/Message.php)",
+      "Bash(php -l /Volumes/projetos/IA/chatbot/app/Controllers/ChatController.php)",
+      "Bash(php -l /Volumes/projetos/IA/chatbot/app/Views/chat/index.php)",
+      "Bash(ls /usr/local/bin/php*)",
+      "Bash(ls /opt/homebrew/bin/php*)",
+      "Bash(curl -skL -b /tmp/s7b.txt -o /tmp/chat2.html -w \"%{http_code}\" https://chat.nowflow.com.br/admin/chat)",
+      "Read(//tmp/**)",
+      "Bash(curl -sk -b /tmp/s7b.txt -H 'X-Requested-With: XMLHttpRequest' https://chat.nowflow.com.br/admin/chat/list/active)",
+      "Bash(python3 -m json.tool)",
+      "Bash(ssh -i /Users/laercio/.ssh/id_rsa root@177.136.230.9 'cat > /var/www/chat.nowflow.com.br/app/Models/Chat.php')",
+      "Bash(ssh root@177.136.230.9 'cat > /var/www/chat.nowflow.com.br/database/migrations/2024_01_01_000017_create_company_settings_table.php')",
+      "Bash(ssh root@177.136.230.9 'tail -30 /var/log/nginx/error.log 2>/dev/null || tail -30 /var/log/apache2/error.log 2>/dev/null || php -r \"echo ini_get\\(\\\\\"error_log\\\\\"\\);\"')",
+      "Bash(ssh -i ~/.ssh/id_rsa root@177.136.230.9 'tail -20 /var/log/nginx/error.log; echo \"---PHP---\"; find /var/www/chat.nowflow.com.br -name \"*.log\" 2>/dev/null | head -5')"
+    ]
+  }
+}

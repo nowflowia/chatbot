@@ -1,0 +1,939 @@
+<?php \Core\View::section('title') ?>Configurações<?php \Core\View::endSection() ?>
+<?php \Core\View::section('page-title') ?>Configurações<?php \Core\View::endSection() ?>
+<?php \Core\View::section('content') ?>
+
+<?php
+$st = $settings['status'] ?? 'inactive';
+$statusMap = [
+  'active'   => ['bg'=>'#dcfce7','color'=>'#166534','dot'=>'#16a34a','label'=>'Conectado'],
+  'inactive' => ['bg'=>'#f1f5f9','color'=>'#475569','dot'=>'#94a3b8','label'=>'Não testado'],
+  'error'    => ['bg'=>'#fee2e2','color'=>'#991b1b','dot'=>'#dc2626','label'=>'Erro'],
+];
+$sc  = $statusMap[$st] ?? $statusMap['inactive'];
+$cs  = $companySettings ?? [];
+$tab = $activeTab ?? 'empresa';
+?>
+
+<!-- Tab nav -->
+<ul class="nav nav-tabs mb-4" id="settingsTabs">
+  <li class="nav-item">
+    <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'empresa'   ? 'active' : '' ?>"
+       href="<?= url('admin/settings?tab=empresa') ?>">
+      <i class="bi bi-building text-secondary"></i> Empresa
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'template'  ? 'active' : '' ?>"
+       href="<?= url('admin/settings?tab=template') ?>">
+      <i class="bi bi-palette text-warning"></i> Template
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'whatsapp'  ? 'active' : '' ?>"
+       href="<?= url('admin/settings?tab=whatsapp') ?>">
+      <i class="bi bi-whatsapp text-success"></i> WhatsApp
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'smtp'      ? 'active' : '' ?>"
+       href="<?= url('admin/settings?tab=smtp') ?>">
+      <i class="bi bi-envelope-fill text-primary"></i> E-mail / SMTP
+    </a>
+  </li>
+</ul>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: Empresa
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-empresa" <?= $tab !== 'empresa' ? 'style="display:none"' : '' ?>>
+
+<div class="mb-4">
+  <h5 class="fw-bold mb-0">Dados da Empresa</h5>
+  <small class="text-muted">Informações institucionais, logotipo e ícone do sistema</small>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-building text-secondary"></i> Informações da Empresa
+      </div>
+      <div class="card-body">
+        <div id="company-form-alert"></div>
+        <form id="company-form" novalidate enctype="multipart/form-data">
+          <?= csrf_field() ?>
+          <div class="row g-3">
+
+            <div class="col-md-8">
+              <label class="form-label">Razão Social / Nome da Empresa</label>
+              <input type="text" name="company_name" class="form-control"
+                     placeholder="Empresa Ltda."
+                     value="<?= e($cs['company_name'] ?? '') ?>">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">CNPJ</label>
+              <input type="text" name="cnpj" class="form-control" id="field-cnpj"
+                     placeholder="00.000.000/0000-00"
+                     value="<?= e($cs['cnpj'] ?? '') ?>">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">E-mail da Empresa</label>
+              <input type="email" name="email" class="form-control"
+                     placeholder="contato@empresa.com"
+                     value="<?= e($cs['email'] ?? '') ?>">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Telefone / WhatsApp</label>
+              <input type="text" name="phone" class="form-control"
+                     placeholder="(11) 90000-0000"
+                     value="<?= e($cs['phone'] ?? '') ?>">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Endereço</label>
+              <input type="text" name="address" class="form-control"
+                     placeholder="Rua Exemplo, 100 — Sala 01"
+                     value="<?= e($cs['address'] ?? '') ?>">
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label">CEP</label>
+              <input type="text" name="zip" class="form-control" id="field-zip"
+                     placeholder="00000-000"
+                     value="<?= e($cs['zip'] ?? '') ?>">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Cidade</label>
+              <input type="text" name="city" class="form-control" id="field-city"
+                     placeholder="São Paulo"
+                     value="<?= e($cs['city'] ?? '') ?>">
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label">Estado (UF)</label>
+              <select name="state" class="form-select">
+                <option value="">—</option>
+                <?php foreach (['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'] as $uf): ?>
+                <option value="<?= $uf ?>" <?= ($cs['state'] ?? '') === $uf ? 'selected' : '' ?>><?= $uf ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+
+            <!-- Logo -->
+            <div class="col-md-6">
+              <label class="form-label">Logotipo <small class="text-muted">(PNG, JPG, SVG)</small></label>
+              <?php if (!empty($cs['logo_path'])): ?>
+              <div class="mb-2">
+                <img src="<?= url($cs['logo_path']) ?>" alt="Logo atual"
+                     style="max-height:60px;max-width:200px;object-fit:contain;border:1px solid #e2e8f0;border-radius:6px;padding:6px;">
+              </div>
+              <?php endif; ?>
+              <input type="file" name="logo" class="form-control" accept="image/png,image/jpeg,image/svg+xml,image/webp">
+              <small class="text-muted">Recomendado: 300×80 px, fundo transparente</small>
+            </div>
+
+            <!-- Icon/Favicon -->
+            <div class="col-md-6">
+              <label class="form-label">Ícone / Favicon <small class="text-muted">(PNG, ICO)</small></label>
+              <?php if (!empty($cs['icon_path'])): ?>
+              <div class="mb-2">
+                <img src="<?= url($cs['icon_path']) ?>" alt="Ícone atual"
+                     style="max-height:48px;max-width:48px;object-fit:contain;border:1px solid #e2e8f0;border-radius:6px;padding:4px;">
+              </div>
+              <?php endif; ?>
+              <input type="file" name="icon" class="form-control" accept="image/png,image/x-icon,image/jpeg">
+              <small class="text-muted">Recomendado: 64×64 px ou 32×32 px</small>
+            </div>
+
+          </div>
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary px-4 fw-semibold" id="btn-company-save">
+              <span class="spinner-border spinner-border-sm d-none me-2" id="company-save-spin"></span>
+              <i class="bi bi-floppy me-2"></i> Salvar dados da empresa
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-info-circle text-info"></i> Informações
+      </div>
+      <div class="card-body small text-muted">
+        <p>Os dados aqui cadastrados são utilizados em:</p>
+        <ul class="ps-3">
+          <li>E-mails transacionais</li>
+          <li>Rodapé do sistema</li>
+          <li>Relatórios exportados</li>
+        </ul>
+        <p class="mb-0">O <strong>logotipo</strong> substituirá o nome do sistema na barra lateral. O <strong>ícone</strong> será usado como favicon no navegador.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /tab-empresa -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: Template
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-template" <?= $tab !== 'template' ? 'style="display:none"' : '' ?>>
+
+<div class="mb-4">
+  <h5 class="fw-bold mb-0">Template e Aparência</h5>
+  <small class="text-muted">Personalize as cores e adicione CSS customizado ao sistema</small>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-palette text-warning"></i> Personalização Visual
+      </div>
+      <div class="card-body">
+        <div id="template-form-alert"></div>
+        <form id="template-form" novalidate>
+          <?= csrf_field() ?>
+          <div class="row g-3">
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Cor Principal</label>
+              <div class="d-flex align-items-center gap-2">
+                <input type="color" name="primary_color" id="primary_color_picker" class="form-control form-control-color"
+                       value="<?= e($cs['primary_color'] ?? '#3b82f6') ?>"
+                       title="Escolha a cor principal">
+                <input type="text" id="primary_color_hex" class="form-control font-monospace"
+                       value="<?= e($cs['primary_color'] ?? '#3b82f6') ?>"
+                       placeholder="#3b82f6" maxlength="7">
+              </div>
+              <small class="text-muted">Usada em botões, links e destaques do sistema</small>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label fw-semibold">CSS Personalizado</label>
+              <textarea name="custom_css" id="custom_css" class="form-control font-monospace"
+                        rows="16" placeholder="/* Adicione seu CSS aqui */
+/* Exemplos:
+.sidebar { background: #1e293b !important; }
+.btn-primary { border-radius: 20px; }
+*/"
+                        style="font-size:.83rem;tab-size:2;"><?= e($cs['custom_css'] ?? '') ?></textarea>
+              <small class="text-muted">CSS injetado globalmente em todas as páginas do sistema.</small>
+            </div>
+
+          </div>
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary px-4 fw-semibold" id="btn-template-save">
+              <span class="spinner-border spinner-border-sm d-none me-2" id="template-save-spin"></span>
+              <i class="bi bi-floppy me-2"></i> Salvar template
+            </button>
+            <button type="button" class="btn btn-outline-secondary px-4" id="btn-template-preview">
+              <i class="bi bi-eye me-2"></i> Pré-visualizar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-lightbulb text-warning"></i> Dicas de CSS
+      </div>
+      <div class="card-body small text-muted p-3">
+        <p class="fw-semibold mb-1">Sidebar</p>
+        <code class="d-block mb-2">.sidebar { background: #1e293b; }</code>
+        <p class="fw-semibold mb-1">Botões arredondados</p>
+        <code class="d-block mb-2">.btn { border-radius: 20px; }</code>
+        <p class="fw-semibold mb-1">Fonte personalizada</p>
+        <code class="d-block mb-2">body { font-family: 'Inter', sans-serif; }</code>
+        <p class="fw-semibold mb-1">Esconder elementos</p>
+        <code class="d-block">.element { display: none !important; }</code>
+      </div>
+    </div>
+
+    <!-- Live preview -->
+    <div class="card mt-3" id="color-preview-card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-eye text-info"></i> Preview da cor
+      </div>
+      <div class="card-body">
+        <div id="color-swatch" style="height:40px;border-radius:8px;background:<?= e($cs['primary_color'] ?? '#3b82f6') ?>;transition:background .2s;"></div>
+        <button class="btn btn-sm w-100 mt-2 fw-semibold text-white" id="preview-btn-sample"
+                style="background:<?= e($cs['primary_color'] ?? '#3b82f6') ?>;border:none;">
+          Botão de exemplo
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /tab-template -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: WhatsApp
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-whatsapp" <?= $tab !== 'whatsapp' ? 'style="display:none"' : '' ?>>
+
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h5 class="fw-bold mb-0">Configurações do WhatsApp</h5>
+    <small class="text-muted">Integração com a API Oficial da Meta (WhatsApp Business)</small>
+  </div>
+  <div class="d-flex align-items-center gap-2 px-3 py-2 rounded-3"
+       id="status-badge"
+       style="background:<?= $sc['bg'] ?>;color:<?= $sc['color'] ?>;font-size:.82rem;font-weight:600;">
+    <span class="rounded-circle" id="status-dot"
+          style="width:9px;height:9px;background:<?= $sc['dot'] ?>;display:inline-block;flex-shrink:0;"></span>
+    <span id="status-text"><?= $sc['label'] ?></span>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-whatsapp text-success"></i> Credenciais da API Meta
+      </div>
+      <div class="card-body">
+        <div id="form-alert"></div>
+        <form id="settings-form" novalidate>
+          <?= csrf_field() ?>
+          <div class="row g-3">
+
+            <div class="col-12">
+              <label class="form-label">Nome da Configuração</label>
+              <input type="text" name="name" class="form-control"
+                     value="<?= e($settings['name'] ?? 'Principal') ?>">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Access Token <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <input type="password" name="access_token" id="access_token" class="form-control font-monospace"
+                       placeholder="EAAxxxxxxxxxxxxxxxx..."
+                       value="<?= e($settings['access_token'] ?? '') ?>">
+                <button type="button" class="btn btn-outline-secondary" onclick="toggleSecret('access_token','icon-at')">
+                  <i class="bi bi-eye" id="icon-at"></i>
+                </button>
+              </div>
+              <div class="invalid-feedback" id="err-access_token"></div>
+              <small class="text-muted">Token permanente ou temporário do Meta Developer Portal.</small>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Verify Token <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <input type="text" name="verify_token" class="form-control font-monospace"
+                       value="<?= e($settings['verify_token'] ?? '') ?>">
+                <button type="button" class="btn btn-outline-secondary btn-sm px-2"
+                        onclick="generateToken()" title="Gerar token">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </div>
+              <div class="invalid-feedback" id="err-verify_token"></div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Versão da API</label>
+              <select name="api_version" class="form-select">
+                <?php foreach (['v25.0','v24.0','v23.0','v22.0','v21.0','v20.0','v19.0','v18.0'] as $v): ?>
+                <option value="<?= $v ?>" <?= ($settings['api_version'] ?? 'v25.0') === $v ? 'selected' : '' ?>>
+                  <?= $v ?>
+                </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Phone Number ID <span class="text-danger">*</span></label>
+              <input type="text" name="phone_number_id" class="form-control font-monospace"
+                     value="<?= e($settings['phone_number_id'] ?? '') ?>">
+              <div class="invalid-feedback" id="err-phone_number_id"></div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Business Account ID (WABA)</label>
+              <input type="text" name="business_account_id" class="form-control font-monospace"
+                     value="<?= e($settings['business_account_id'] ?? '') ?>">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">App ID</label>
+              <input type="text" name="app_id" class="form-control font-monospace"
+                     value="<?= e($settings['app_id'] ?? '') ?>">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">App Secret</label>
+              <div class="input-group">
+                <input type="password" name="app_secret" id="app_secret" class="form-control font-monospace"
+                       value="<?= e($settings['app_secret'] ?? '') ?>">
+                <button type="button" class="btn btn-outline-secondary" onclick="toggleSecret('app_secret','icon-as')">
+                  <i class="bi bi-eye" id="icon-as"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">URL do Webhook</label>
+              <div class="input-group">
+                <input type="text" class="form-control font-monospace bg-light"
+                       value="<?= e($webhookUrl) ?>" readonly id="webhook-url-input">
+                <button type="button" class="btn btn-outline-secondary" onclick="copyWebhook()">
+                  <i class="bi bi-clipboard" id="copy-icon"></i>
+                </button>
+              </div>
+              <small class="text-muted">Cole no campo <strong>Callback URL</strong> do App Meta.</small>
+            </div>
+
+          </div>
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary px-4 fw-semibold" id="btn-save">
+              <span class="spinner-border spinner-border-sm d-none me-2" id="save-spin"></span>
+              <i class="bi bi-floppy me-2" id="save-icon"></i>
+              <span id="save-text">Salvar configurações</span>
+            </button>
+            <button type="button" class="btn btn-outline-success px-4 fw-semibold" id="btn-test" onclick="testConnection()">
+              <span class="spinner-border spinner-border-sm d-none me-2" id="test-spin"></span>
+              <i class="bi bi-wifi me-2" id="test-icon"></i>
+              <span id="test-text">Testar conexão</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-activity text-primary"></i> Status da Conexão
+      </div>
+      <div class="card-body">
+        <?php if (!empty($settings)): ?>
+        <dl class="row mb-0 small">
+          <dt class="col-5 text-muted fw-normal">Status</dt>
+          <dd class="col-7 fw-semibold">
+            <?php if ($st === 'active'): ?>
+              <span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Ativo</span>
+            <?php elseif ($st === 'error'): ?>
+              <span class="text-danger"><i class="bi bi-x-circle-fill me-1"></i>Erro</span>
+            <?php else: ?>
+              <span class="text-muted"><i class="bi bi-dash-circle me-1"></i>Não testado</span>
+            <?php endif; ?>
+          </dd>
+          <?php if (!empty($settings['phone_number_id'])): ?>
+          <dt class="col-5 text-muted fw-normal mt-1">Phone ID</dt>
+          <dd class="col-7 mt-1 font-monospace" style="font-size:.75rem"><?= e($settings['phone_number_id']) ?></dd>
+          <?php endif; ?>
+          <?php if (!empty($settings['api_version'])): ?>
+          <dt class="col-5 text-muted fw-normal mt-1">Versão</dt>
+          <dd class="col-7 mt-1"><?= e($settings['api_version']) ?></dd>
+          <?php endif; ?>
+          <?php if (!empty($settings['last_tested_at'])): ?>
+          <dt class="col-5 text-muted fw-normal mt-1">Último teste</dt>
+          <dd class="col-7 mt-1"><?= date('d/m/Y H:i', strtotime($settings['last_tested_at'])) ?></dd>
+          <?php endif; ?>
+          <?php if (!empty($settings['last_error'])): ?>
+          <dt class="col-12 text-muted fw-normal mt-2">Último erro</dt>
+          <dd class="col-12 mt-1"><div class="alert alert-danger py-2 mb-0 small"><?= e($settings['last_error']) ?></div></dd>
+          <?php endif; ?>
+        </dl>
+        <?php else: ?>
+        <div class="text-center text-muted py-3 small">Nenhuma configuração salva ainda.</div>
+        <?php endif; ?>
+        <div id="test-result" class="mt-3"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-info-circle text-info"></i> Como configurar
+      </div>
+      <div class="card-body small text-muted p-3">
+        <ol class="ps-3 mb-0" style="line-height:2;">
+          <li>Acesse <a href="https://developers.facebook.com" target="_blank">developers.facebook.com</a></li>
+          <li>Crie um App do tipo <strong>Business</strong></li>
+          <li>Adicione o produto <strong>WhatsApp</strong></li>
+          <li>Copie o <strong>Access Token</strong></li>
+          <li>Copie o <strong>Phone Number ID</strong> e <strong>WABA ID</strong></li>
+          <li>Cole a <strong>URL do Webhook</strong> no App Meta</li>
+          <li>Use o mesmo <strong>Verify Token</strong></li>
+          <li>Assine o evento: <code>messages</code></li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /tab-whatsapp -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: SMTP
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-smtp" <?= $tab !== 'smtp' ? 'style="display:none"' : '' ?>>
+
+<div class="mb-4">
+  <h5 class="fw-bold mb-0">Configurações de E-mail (SMTP)</h5>
+  <small class="text-muted">Servidor de envio para convites, redefinição de senha e notificações</small>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-envelope-fill text-primary"></i> Servidor SMTP
+      </div>
+      <div class="card-body">
+        <div id="mail-form-alert"></div>
+        <form id="mail-settings-form" novalidate>
+          <?= csrf_field() ?>
+          <div class="row g-3">
+
+            <div class="col-md-8">
+              <label class="form-label">Host SMTP <span class="text-danger">*</span></label>
+              <input type="text" name="mail_host" class="form-control font-monospace"
+                     placeholder="smtp.gmail.com"
+                     value="<?= e($mailSettings['host'] ?? '') ?>">
+              <div class="invalid-feedback" id="err-mail_host"></div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Porta <span class="text-danger">*</span></label>
+              <input type="number" name="mail_port" class="form-control"
+                     placeholder="587"
+                     value="<?= e($mailSettings['port'] ?? 587) ?>">
+              <div class="invalid-feedback" id="err-mail_port"></div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Criptografia</label>
+              <select name="mail_encryption" class="form-select">
+                <?php foreach (['tls'=>'TLS (587)', 'ssl'=>'SSL (465)', 'none'=>'Nenhuma'] as $v => $l): ?>
+                <option value="<?= $v ?>" <?= ($mailSettings['encryption'] ?? 'tls') === $v ? 'selected' : '' ?>>
+                  <?= $l ?>
+                </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+
+            <div class="col-md-8">
+              <label class="form-label">Usuário (e-mail de login)</label>
+              <input type="text" name="mail_username" class="form-control"
+                     placeholder="seu@email.com"
+                     value="<?= e($mailSettings['username'] ?? '') ?>">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Senha</label>
+              <div class="input-group">
+                <input type="password" name="mail_password" id="mail_password" class="form-control"
+                       placeholder="Senha ou App Password"
+                       value="<?= e($mailSettings['password'] ?? '') ?>">
+                <button type="button" class="btn btn-outline-secondary"
+                        onclick="toggleSecret('mail_password','icon-mp')">
+                  <i class="bi bi-eye" id="icon-mp"></i>
+                </button>
+              </div>
+              <small class="text-muted">Para Gmail use uma <strong>Senha de App</strong> (não a senha da conta).</small>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Nome do Remetente <span class="text-danger">*</span></label>
+              <input type="text" name="mail_from_name" class="form-control"
+                     placeholder="ChatBot NowFlow"
+                     value="<?= e($mailSettings['from_name'] ?? config('app.name', 'ChatBot')) ?>">
+              <div class="invalid-feedback" id="err-mail_from_name"></div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">E-mail do Remetente <span class="text-danger">*</span></label>
+              <input type="email" name="mail_from_address" class="form-control"
+                     placeholder="noreply@seudominio.com"
+                     value="<?= e($mailSettings['from_address'] ?? '') ?>">
+              <div class="invalid-feedback" id="err-mail_from_address"></div>
+            </div>
+
+          </div>
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary px-4 fw-semibold" id="btn-mail-save">
+              <span class="spinner-border spinner-border-sm d-none me-2" id="mail-save-spin"></span>
+              <i class="bi bi-floppy me-2"></i> Salvar configurações
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-activity text-primary"></i> Status
+      </div>
+      <div class="card-body small">
+        <?php if (!empty($mailSettings)): ?>
+        <dl class="row mb-0">
+          <dt class="col-5 text-muted fw-normal">Host</dt>
+          <dd class="col-7 font-monospace"><?= e($mailSettings['host']) ?></dd>
+          <dt class="col-5 text-muted fw-normal mt-1">Porta</dt>
+          <dd class="col-7 mt-1"><?= e($mailSettings['port']) ?></dd>
+          <dt class="col-5 text-muted fw-normal mt-1">Criptografia</dt>
+          <dd class="col-7 mt-1"><?= strtoupper(e($mailSettings['encryption'])) ?></dd>
+          <dt class="col-5 text-muted fw-normal mt-1">Usuário</dt>
+          <dd class="col-7 mt-1 text-truncate"><?= e($mailSettings['username'] ?? '—') ?></dd>
+          <dt class="col-5 text-muted fw-normal mt-1">Remetente</dt>
+          <dd class="col-7 mt-1 text-truncate"><?= e($mailSettings['from_address'] ?? '—') ?></dd>
+        </dl>
+        <?php else: ?>
+        <p class="text-muted mb-0">Nenhuma configuração salva ainda.</p>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-send text-success"></i> Testar envio
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label form-label-sm fw-semibold">Enviar e-mail de teste para</label>
+          <input type="email" id="test-email-input" class="form-control form-control-sm"
+                 placeholder="seu@email.com">
+        </div>
+        <button class="btn btn-success btn-sm w-100" id="btn-mail-test">
+          <span class="spinner-border spinner-border-sm d-none me-1" id="mail-test-spin"></span>
+          <i class="bi bi-send-fill me-1"></i> Enviar teste
+        </button>
+        <div id="mail-test-result" class="mt-3"></div>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-lightbulb text-warning"></i> Configurações populares
+      </div>
+      <div class="card-body small text-muted p-3">
+        <p class="fw-semibold mb-1">Gmail</p>
+        <code class="d-block">Host: smtp.gmail.com</code>
+        <code class="d-block">Porta: 587 / TLS</code>
+        <code class="d-block mb-2">Senha: App Password</code>
+        <p class="fw-semibold mb-1">Outlook/Hotmail</p>
+        <code class="d-block">Host: smtp-mail.outlook.com</code>
+        <code class="d-block">Porta: 587 / TLS</code>
+        <code class="d-block mb-2">Usuário: seu@outlook.com</code>
+        <p class="fw-semibold mb-1">SendGrid</p>
+        <code class="d-block">Host: smtp.sendgrid.net</code>
+        <code class="d-block">Porta: 587 / TLS</code>
+        <code class="d-block">Usuário: apikey</code>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /tab-smtp -->
+
+<?php \Core\View::endSection() ?>
+
+<?php \Core\View::section('scripts') ?>
+<script>
+(function () {
+'use strict';
+var BASE = '<?= url('admin') ?>';
+
+// ── Empresa form ───────────────────────────────────────────────
+document.getElementById('company-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var btn  = document.getElementById('btn-company-save');
+  var spin = document.getElementById('company-save-spin');
+  btn.disabled = true;
+  spin.classList.remove('d-none');
+
+  // Use FormData for file uploads
+  var fd = new FormData(this);
+  fetch('<?= url('admin/settings/company') ?>', {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    body: fd
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (res) {
+    btn.disabled = false;
+    spin.classList.add('d-none');
+    if (res.success) {
+      Toast.show(res.message, 'success');
+      setTimeout(function () { window.location.reload(); }, 1200);
+    } else {
+      Toast.show(res.message || 'Erro ao salvar.', 'danger');
+    }
+  })
+  .catch(function () {
+    btn.disabled = false;
+    spin.classList.add('d-none');
+    Toast.show('Erro de conexão. Tente novamente.', 'error');
+  });
+});
+
+// CNPJ mask
+(function () {
+  var field = document.getElementById('field-cnpj');
+  if (!field) return;
+  field.addEventListener('input', function () {
+    var v = this.value.replace(/\D/g, '').slice(0, 14);
+    if (v.length > 12) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/, '$1.$2.$3/$4-$5');
+    else if (v.length > 8) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{0,4})/, '$1.$2.$3/$4');
+    else if (v.length > 5) v = v.replace(/^(\d{2})(\d{3})(\d{0,3})/, '$1.$2.$3');
+    else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,3})/, '$1.$2');
+    this.value = v;
+  });
+})();
+
+// CEP auto-fill
+(function () {
+  var zipField  = document.getElementById('field-zip');
+  var cityField = document.getElementById('field-city');
+  if (!zipField) return;
+
+  zipField.addEventListener('input', function () {
+    var v = this.value.replace(/\D/g, '').slice(0, 8);
+    if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
+    this.value = v;
+  });
+
+  zipField.addEventListener('blur', function () {
+    var cep = this.value.replace(/\D/g, '');
+    if (cep.length !== 8) return;
+    fetch('https://viacep.com.br/ws/' + cep + '/json/')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.erro) return;
+        if (cityField) cityField.value = d.localidade || '';
+        var stateEl = document.querySelector('[name="state"]');
+        if (stateEl) stateEl.value = d.uf || '';
+        var addrEl = document.querySelector('[name="address"]');
+        if (addrEl && !addrEl.value) addrEl.value = (d.logradouro || '') + (d.bairro ? ' — ' + d.bairro : '');
+      })
+      .catch(function () {});
+  });
+})();
+
+// ── Template form ──────────────────────────────────────────────
+(function () {
+  var picker  = document.getElementById('primary_color_picker');
+  var hexInp  = document.getElementById('primary_color_hex');
+  var swatch  = document.getElementById('color-swatch');
+  var sample  = document.getElementById('preview-btn-sample');
+
+  function applyColor(color) {
+    if (swatch) swatch.style.background = color;
+    if (sample) sample.style.background = color;
+  }
+
+  if (picker) {
+    picker.addEventListener('input', function () {
+      if (hexInp) hexInp.value = this.value;
+      applyColor(this.value);
+    });
+  }
+
+  if (hexInp) {
+    hexInp.addEventListener('input', function () {
+      var v = this.value.trim();
+      if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+        if (picker) picker.value = v;
+        applyColor(v);
+      }
+    });
+  }
+})();
+
+document.getElementById('template-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var btn  = document.getElementById('btn-template-save');
+  var spin = document.getElementById('template-save-spin');
+  btn.disabled = true;
+  spin.classList.remove('d-none');
+
+  // sync hex input → hidden field name
+  var hexInp = document.getElementById('primary_color_hex');
+  var picker  = document.getElementById('primary_color_picker');
+  if (hexInp && picker) {
+    var v = hexInp.value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) picker.value = v;
+  }
+
+  Api.formPost('<?= url('admin/settings/template') ?>', this, function (res) {
+    btn.disabled = false;
+    spin.classList.add('d-none');
+    if (!res) return;
+    if (res.success) {
+      Toast.show(res.message, 'success');
+      setTimeout(function () { window.location.reload(); }, 1200);
+    } else {
+      Toast.show(res.message || 'Erro ao salvar.', 'danger');
+    }
+  });
+});
+
+document.getElementById('btn-template-preview').addEventListener('click', function () {
+  var css = document.getElementById('custom_css').value;
+  var id  = 'preview-style-inject';
+  var el  = document.getElementById(id);
+  if (!el) { el = document.createElement('style'); el.id = id; document.head.appendChild(el); }
+  el.textContent = css;
+  Toast.show('CSS aplicado para pré-visualização (não salvo).', 'info', 3000);
+});
+
+// ── WhatsApp form ──────────────────────────────────────────────
+document.getElementById('settings-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  clearErrors('wa');
+  FormHelper.setLoading(document.getElementById('btn-save'), true);
+  document.getElementById('save-text').textContent = 'Salvando…';
+
+  Api.formPost('<?= url('admin/settings') ?>', this, function (res) {
+    FormHelper.setLoading(document.getElementById('btn-save'), false);
+    document.getElementById('save-text').textContent = 'Salvar configurações';
+    if (!res) return;
+    if (res.success) {
+      Toast.show(res.message, 'success');
+    } else {
+      showErrors('wa', res.errors || {});
+      Toast.show(res.message, 'danger');
+    }
+  });
+});
+
+function testConnection() {
+  var btn  = document.getElementById('btn-test');
+  var spin = document.getElementById('test-spin');
+  var icon = document.getElementById('test-icon');
+  var box  = document.getElementById('test-result');
+  btn.disabled = true;
+  spin.classList.remove('d-none'); icon.className = 'd-none';
+  document.getElementById('test-text').textContent = 'Testando…';
+  box.innerHTML = '';
+
+  Api.post(BASE + '/settings/test', {}).then(function (res) {
+    btn.disabled = false;
+    spin.classList.add('d-none'); icon.className = 'bi bi-wifi me-2';
+    document.getElementById('test-text').textContent = 'Testar conexão';
+    if (res.success) {
+      box.innerHTML = mkAlert('success', res.message);
+      updateStatusBadge('#dcfce7','#166534','#16a34a','Conectado');
+    } else {
+      box.innerHTML = mkAlert('danger', res.message);
+      updateStatusBadge('#fee2e2','#991b1b','#dc2626','Erro de conexão');
+    }
+  });
+}
+window.testConnection = testConnection;
+
+function updateStatusBadge(bg, color, dot, label) {
+  var badge = document.getElementById('status-badge');
+  var dotEl = document.getElementById('status-dot');
+  var txtEl = document.getElementById('status-text');
+  if (badge) { badge.style.background = bg; badge.style.color = color; }
+  if (dotEl) dotEl.style.background = dot;
+  if (txtEl) txtEl.textContent = label;
+}
+
+// ── SMTP form ─────────────────────────────────────────────────
+document.getElementById('mail-settings-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  clearErrors('mail');
+  var btn = document.getElementById('btn-mail-save');
+  btn.disabled = true;
+  document.getElementById('mail-save-spin').classList.remove('d-none');
+
+  Api.formPost(BASE + '/settings/mail', this, function (res) {
+    btn.disabled = false;
+    document.getElementById('mail-save-spin').classList.add('d-none');
+    if (!res) return;
+    if (res.success) {
+      Toast.show(res.message, 'success');
+    } else {
+      showErrors('mail', res.errors || {});
+      Toast.show(res.message, 'danger');
+    }
+  });
+});
+
+document.getElementById('btn-mail-test').addEventListener('click', function () {
+  var to   = document.getElementById('test-email-input').value.trim();
+  var box  = document.getElementById('mail-test-result');
+  var spin = document.getElementById('mail-test-spin');
+  if (!to) { Toast.show('Informe um e-mail para o teste.', 'warning'); return; }
+
+  this.disabled = true;
+  spin.classList.remove('d-none');
+  box.innerHTML = '';
+
+  Api.post(BASE + '/settings/mail/test', { test_email: to }).then(function (res) {
+    document.getElementById('btn-mail-test').disabled = false;
+    spin.classList.add('d-none');
+    box.innerHTML = mkAlert(res.success ? 'success' : 'danger', res.message);
+  });
+});
+
+// ── Helpers ───────────────────────────────────────────────────
+function mkAlert(type, msg) {
+  return '<div class="alert alert-' + type + ' py-2 small d-flex gap-2 align-items-start">'
+    + '<i class="bi bi-' + (type==='success'?'check':'x') + '-circle-fill mt-1 flex-shrink-0"></i>'
+    + '<span>' + msg + '</span></div>';
+}
+
+function showErrors(ns, errors) {
+  Object.entries(errors).forEach(function ([field, msgs]) {
+    var key = ns === 'mail' ? 'mail_' + field : field;
+    var el  = document.getElementById('err-' + key) || document.getElementById('err-' + field);
+    var inp = document.querySelector('[name="' + key + '"]') || document.querySelector('[name="' + field + '"]');
+    if (el && msgs.length) { el.textContent = msgs[0]; el.style.display = 'block'; }
+    if (inp) inp.classList.add('is-invalid');
+  });
+}
+
+function clearErrors() {
+  document.querySelectorAll('.is-invalid').forEach(function (el) { el.classList.remove('is-invalid'); });
+  document.querySelectorAll('.invalid-feedback').forEach(function (el) { el.textContent = ''; el.style.display = 'none'; });
+}
+
+function toggleSecret(inputId, iconId) {
+  var inp = document.getElementById(inputId);
+  var ico = document.getElementById(iconId);
+  if (inp.type === 'password') { inp.type = 'text'; ico.className = 'bi bi-eye-slash'; }
+  else { inp.type = 'password'; ico.className = 'bi bi-eye'; }
+}
+window.toggleSecret = toggleSecret;
+
+function generateToken() {
+  var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  var token = '';
+  for (var i = 0; i < 32; i++) token += chars[Math.floor(Math.random() * chars.length)];
+  document.querySelector('[name="verify_token"]').value = token;
+  Toast.show('Novo token gerado!', 'info', 2000);
+}
+window.generateToken = generateToken;
+
+function copyWebhook() {
+  var val = document.getElementById('webhook-url-input').value;
+  navigator.clipboard.writeText(val).then(function () {
+    document.getElementById('copy-icon').className = 'bi bi-check2 text-success';
+    setTimeout(function () { document.getElementById('copy-icon').className = 'bi bi-clipboard'; }, 2000);
+    Toast.show('URL copiada!', 'info', 2000);
+  });
+}
+window.copyWebhook = copyWebhook;
+
+})();
+</script>
+<?php \Core\View::endSection() ?>

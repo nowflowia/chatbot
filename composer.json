@@ -1,0 +1,20 @@
+{
+    "name": "chatbot/system",
+    "description": "WhatsApp Chatbot System with Meta API",
+    "type": "project",
+    "require": {
+        "php": ">=8.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Core\\": "core/"
+        },
+        "files": [
+            "core/Helpers.php"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}
