@@ -36,3 +36,9 @@ Thumbs.db
 
 # PHP
 *.log
+
+#arquivos de configuração e licença
+public_api/
+public_owner/
+
+.claude/
