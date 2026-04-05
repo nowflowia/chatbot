@@ -46,7 +46,7 @@ class UserController extends Controller
         $license  = LicenseService::check();
         $maxUsers = $license['max_users'] ?? 0;
         if ($license['valid'] && $maxUsers > 0 && $maxUsers < PHP_INT_MAX) {
-            $currentCount = User::count();
+            $currentCount = User::countAll();
             if ($currentCount >= $maxUsers) {
                 $this->jsonError(
                     "Limite de {$maxUsers} usuário(s) atingido. Atualize sua licença para adicionar mais.",
@@ -202,12 +202,4 @@ class UserController extends Controller
     }
 
     // ---------------------------------------------------------------
-    // Helpers
-    // ---------------------------------------------------------------
-    private function requireAjax(): void
-    {
-        if (!$this->request->isAjax()) {
-            $this->redirect(url('admin/users'));
-        }
-    }
 }

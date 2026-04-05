@@ -37,7 +37,7 @@ class User extends Model
         );
     }
 
-    public static function count(): int
+    public static function countAll(): int
     {
         return (int)(Database::getInstance()->selectOne("SELECT COUNT(*) AS cnt FROM users")['cnt'] ?? 0);
     }
