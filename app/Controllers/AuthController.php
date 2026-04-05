@@ -29,7 +29,8 @@ class AuthController extends Controller
 
     public function login(Request $request): void
     {
-        if (!$request->isAjax()) {
+        // Always respond as JSON for POST requests
+        if (!$request->isPost()) {
             $this->redirect(url('login'));
         }
 
@@ -51,8 +52,8 @@ class AuthController extends Controller
             $this->jsonError('E-mail ou senha inválidos.', [], 401);
         }
 
-        // Update last login
-        User::updateLastLogin((int)Auth::id(), $request->ip());
+        // Update last login (non-critical)
+        try { User::updateLastLogin((int)Auth::id(), $request->ip()); } catch (\Throwable $e) {}
 
         $this->jsonSuccess('Login realizado com sucesso.', [
             'redirect' => url('admin/dashboard'),
