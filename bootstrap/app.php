@@ -32,7 +32,9 @@ if ($debug) {
     error_reporting(E_ALL);
 } else {
     ini_set('display_errors', '0');
-    error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
+    ini_set('display_startup_errors', '0');
+    ini_set('log_errors', '1');
+    error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT & ~E_NOTICE & ~E_WARNING);
 }
 
 // Timezone

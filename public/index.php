@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+// Buffer output to prevent warnings from breaking JSON responses
+ob_start();
+
 define('ROOT_PATH', dirname(__DIR__));
 
 // Redirect to installer if not installed yet
