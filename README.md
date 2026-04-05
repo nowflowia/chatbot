@@ -212,14 +212,17 @@ No painel, acesse **Configurações → E-mail / SMTP** e preencha:
 
 ## Licenciamento
 
-O sistema suporta controle de licenças por domínio. Configure no `.env`:
+O sistema requer uma licença válida para uso em produção.
+
+**Adquira sua licença em [nowflow.com.br](https://nowflow.com.br)**
+
+Após a compra você receberá uma **Chave de Licença** que deve ser informada durante a instalação (etapa 3 do instalador web) ou manualmente no `.env`:
 
 ```env
-LICENSE_API_URL=https://owner.seudominio.com/public_api
 LICENSE_KEY=sua-chave-aqui
 ```
 
-Sem essas variáveis o sistema roda em **modo desenvolvimento** sem restrições.
+A licença define os limites do plano contratado (número de usuários, fluxos, etc.) e é verificada automaticamente pelo sistema.
 
 ---
 
