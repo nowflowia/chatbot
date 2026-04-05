@@ -75,7 +75,7 @@ function writeEnvFile(array $data): void
         'LOCALE=pt_BR',
         '',
         '# License',
-        'LICENSE_API_URL=' . ($data['license_api'] ?? ''),
+        'LICENSE_API_URL=https://apichat.nowflow.com.br',
         'LICENSE_KEY=' . ($data['license_key'] ?? ''),
     ];
     file_put_contents(INSTALL_ENV, implode("\n", $lines) . "\n");
@@ -176,8 +176,19 @@ function createAdminUser(array $data): void
     $hash = password_hash($data['password'], PASSWORD_BCRYPT, ['cost' => 12]);
     $db   = \Core\Database::getInstance();
 
+    // Seed default roles if table is empty
+    $roleCount = (int)($db->selectOne("SELECT COUNT(*) AS cnt FROM roles")['cnt'] ?? 0);
+    if ($roleCount === 0) {
+        $db->insert("INSERT INTO roles (name, slug, description, is_active, created_at, updated_at)
+                     VALUES ('Administrador', 'admin', 'Acesso total ao sistema', 1, NOW(), NOW())", []);
+        $db->insert("INSERT INTO roles (name, slug, description, is_active, created_at, updated_at)
+                     VALUES ('Agente', 'agent', 'Atendimento ao cliente', 1, NOW(), NOW())", []);
+        $db->insert("INSERT INTO roles (name, slug, description, is_active, created_at, updated_at)
+                     VALUES ('Supervisor', 'supervisor', 'Supervisão de atendimentos', 1, NOW(), NOW())", []);
+    }
+
     // Get admin role id
-    $role = $db->selectOne("SELECT id FROM roles WHERE slug='admin' OR slug='administrator' LIMIT 1");
+    $role   = $db->selectOne("SELECT id FROM roles WHERE slug='admin' LIMIT 1");
     $roleId = $role['id'] ?? 1;
 
     $existing = $db->selectOne("SELECT id FROM users WHERE email = ?", [strtolower($data['email'])]);
@@ -566,27 +577,27 @@ elseif ($step === 4) {
 
 // ── STEP 3: License ───────────────────────────────────────────────
 elseif ($step === 3) {
+    // API URL is fixed — never exposed to the user
+    sessSet('license_api', 'https://apichat.nowflow.com.br');
+
     echo '<div class="alert alert-info small mb-4">
       <i class="bi bi-info-circle me-1"></i>
-      Se você não possui uma licença, deixe os campos em branco. O sistema rodará em <strong>modo desenvolvimento</strong> sem restrições.
+      Insira a chave de licença adquirida em <strong><a href="https://nowflow.com.br" target="_blank">nowflow.com.br</a></strong>.
+      Deixe em branco para rodar em <strong>modo desenvolvimento</strong> sem restrições.
     </div>
     <form method="post">
-      <div class="mb-3">
-        <label class="form-label fw-semibold">URL da API de Licença</label>
-        <input type="url" name="license_api" class="form-control font-monospace"
-               placeholder="https://owner.seudominio.com/public_api"
-               value="' . e(sess('license_api')) . '">
-      </div>
+      <input type="hidden" name="license_api" value="https://apichat.nowflow.com.br">
       <div class="mb-4">
         <label class="form-label fw-semibold">Chave de Licença</label>
         <div class="input-group">
           <input type="password" name="license_key" id="license_key" class="form-control font-monospace"
-                 placeholder="Chave fornecida pelo distribuidor"
+                 placeholder="Chave fornecida em nowflow.com.br"
                  value="' . e(sess('license_key')) . '">
           <button type="button" class="btn btn-outline-secondary" id="btn-show-key">
             <i class="bi bi-eye"></i>
           </button>
         </div>
+        <div class="form-text">Adquira sua licença em <a href="https://nowflow.com.br" target="_blank">nowflow.com.br</a></div>
       </div>
       <div class="d-flex gap-2">
         <a href="?step=2" class="btn btn-outline-secondary flex-shrink-0">← Voltar</a>
