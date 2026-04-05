@@ -179,12 +179,12 @@ function createAdminUser(array $data): void
     // Seed default roles if table is empty
     $roleCount = (int)($db->selectOne("SELECT COUNT(*) AS cnt FROM roles")['cnt'] ?? 0);
     if ($roleCount === 0) {
-        $db->insert("INSERT INTO roles (name, slug, description, is_active, created_at, updated_at)
-                     VALUES ('Administrador', 'admin', 'Acesso total ao sistema', 1, NOW(), NOW())", []);
-        $db->insert("INSERT INTO roles (name, slug, description, is_active, created_at, updated_at)
-                     VALUES ('Agente', 'agent', 'Atendimento ao cliente', 1, NOW(), NOW())", []);
-        $db->insert("INSERT INTO roles (name, slug, description, is_active, created_at, updated_at)
-                     VALUES ('Supervisor', 'supervisor', 'Supervisão de atendimentos', 1, NOW(), NOW())", []);
+        $db->insert("INSERT INTO roles (name, slug, description, status, created_at, updated_at)
+                     VALUES ('Administrador', 'admin', 'Acesso total ao sistema', 'active', NOW(), NOW())", []);
+        $db->insert("INSERT INTO roles (name, slug, description, status, created_at, updated_at)
+                     VALUES ('Agente', 'agent', 'Atendimento ao cliente', 'active', NOW(), NOW())", []);
+        $db->insert("INSERT INTO roles (name, slug, description, status, created_at, updated_at)
+                     VALUES ('Supervisor', 'supervisor', 'Supervisão de atendimentos', 'active', NOW(), NOW())", []);
     }
 
     // Get admin role id
