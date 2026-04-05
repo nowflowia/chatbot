@@ -109,6 +109,7 @@ if (!function_exists('back')) {
 if (!function_exists('json_response')) {
     function json_response(bool $success, string $message = '', mixed $data = null, array $errors = [], int $status = 200): void
     {
+        while (ob_get_level() > 0) { ob_end_clean(); }
         http_response_code($status);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([

@@ -21,6 +21,10 @@ abstract class Controller
 
     protected function json(bool $success, string $message = '', mixed $data = null, array $errors = [], int $status = 200): void
     {
+        // Discard any buffered output (warnings, notices) that would corrupt JSON
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
         http_response_code($status);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
@@ -65,6 +69,13 @@ abstract class Controller
     protected function isAjax(): bool
     {
         return $this->request->isAjax();
+    }
+
+    protected function requireAjax(): void
+    {
+        if (!$this->request->isAjax()) {
+            $this->json(false, 'Requisição inválida.', null, [], 400);
+        }
     }
 
     protected function flash(string $key, mixed $value): void
