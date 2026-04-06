@@ -95,12 +95,26 @@
       </div>
     </div>
     <?php else: ?>
-    <div class="alert alert-warning d-flex gap-2">
-      <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+    <div class="alert alert-warning d-flex gap-2 mb-3">
+      <i class="bi bi-exclamation-triangle-fill mt-1 flex-shrink-0"></i>
       <div>
-        <strong>Git não disponível.</strong><br>
-        O servidor não possui o Git instalado ou acessível pelo processo PHP.
-        Atualizações automáticas não estão disponíveis neste ambiente.
+        <strong>Atualização automática não disponível.</strong>
+        <ul class="mb-0 mt-2 small">
+          <?php if (!$execEnabled): ?>
+          <li><strong>shell_exec / exec estão desabilitados</strong> no php.ini deste servidor.
+              No cPanel vá em <em>Software → Select PHP Version → Extensions</em> e verifique as funções bloqueadas em <code>disable_functions</code>.</li>
+          <?php endif; ?>
+          <?php if (!$gitBin): ?>
+          <li><strong>Git não encontrado</strong> nos caminhos padrão. No cPanel o caminho costuma ser
+              <code>/usr/local/cpanel/3rdparty/bin/git</code> ou <code>/opt/cpanel/ea-git/root/usr/bin/git</code>.
+              Confirme rodando <code>which git</code> via SSH.</li>
+          <?php endif; ?>
+          <?php if (!$hasRepo): ?>
+          <li><strong>Repositório Git não inicializado</strong> neste diretório. Faça o deploy via
+              <code>git clone</code> em vez de upload manual de arquivos.</li>
+          <?php endif; ?>
+        </ul>
+        <div class="mt-2">Como alternativa, faça a atualização via SSH: <code>git -C <?= e(dirname(PUBLIC_PATH)) ?> pull</code></div>
       </div>
     </div>
     <?php endif; ?>
