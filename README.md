@@ -152,6 +152,145 @@ php migrate.php up
 
 ---
 
+## Instalação em cPanel (Hospedagem Compartilhada)
+
+### Deploy inicial via SSH
+
+A forma recomendada mesmo em cPanel é usar o **Terminal SSH** para clonar o repositório diretamente no servidor. Isso habilita atualizações com um clique pelo painel web.
+
+1. **Acesse o Terminal SSH** no cPanel (ou use um cliente como PuTTY / Termius)
+
+2. **Clone o repositório** na pasta do seu domínio:
+
+```bash
+# Substitua "chatbot" pelo nome da pasta configurada no cPanel
+git clone https://github.com/nowflowia/chatbot.git ~/public_html
+# ou em um subdiretório:
+git clone https://github.com/nowflowia/chatbot.git ~/public_html/chat
+```
+
+3. **Instale as dependências** (se o Composer estiver disponível):
+
+```bash
+cd ~/public_html
+composer install --no-dev --optimize-autoloader
+```
+
+> Se o Composer não estiver disponível via SSH, faça upload da pasta `vendor/` gerada localmente.
+
+4. **Permissões de escrita:**
+
+```bash
+chmod -R 755 ~/public_html
+chmod -R 775 ~/public_html/storage
+chmod -R 775 ~/public_html/public/assets/uploads
+```
+
+5. **Configure o Document Root** no cPanel para apontar para a subpasta `public/`:
+   - cPanel → **Domains** (ou Subdomains) → edite o domínio → altere o **Document Root** para `public_html/public` (ou `public_html/chat/public`)
+
+6. **Acesse o instalador** no navegador: `https://seudominio.com.br/install/`
+
+---
+
+### Deploy via FTP/Upload (sem SSH)
+
+Se o seu plano não tem SSH, faça o upload dos arquivos manualmente:
+
+1. Gere a pasta `vendor/` localmente:
+
+```bash
+composer install --no-dev --optimize-autoloader
+```
+
+2. Faça upload de **todos os arquivos** (incluindo `vendor/`) para o servidor via FTP/File Manager
+
+3. Configure o Document Root para a pasta `public/` (conforme passo 5 acima)
+
+4. Acesse o instalador: `https://seudominio.com.br/install/`
+
+> **Atenção:** Deploy por FTP **não inicializa um repositório Git**, portanto as atualizações automáticas pelo painel não estarão disponíveis. Para habilitar, conecte via SSH após o upload e execute:
+> ```bash
+> cd ~/public_html
+> git init
+> git remote add origin https://github.com/nowflowia/chatbot.git
+> git fetch
+> git reset --hard origin/main
+> ```
+
+---
+
+### Habilitando atualizações automáticas no cPanel
+
+Para que o botão **Atualização** no painel funcione, o servidor precisa de dois requisitos:
+
+**1. Git instalado e acessível pelo PHP**
+
+Verifique via SSH:
+```bash
+which git
+# Resultado esperado em cPanel: /usr/local/cpanel/3rdparty/bin/git
+#                           ou: /opt/cpanel/ea-git/root/usr/bin/git
+```
+
+**2. Funções de execução habilitadas no PHP**
+
+No cPanel, vá em:  
+**Software → Select PHP Version → aba "Options"**
+
+Verifique se `shell_exec` e `exec` **não estão** listados em `disable_functions`. Se estiverem, remova-os e salve.
+
+> Após ajustar, acesse **Administração → Atualização** no painel. A página irá diagnosticar o que ainda está bloqueado.
+
+---
+
+## Atualização do Sistema
+
+### Via painel web (recomendado)
+
+1. No menu lateral, clique em **Atualização** (ícone de nuvem)
+2. Clique em **Verificar** — o sistema consulta o repositório remoto e informa quantos commits novos existem
+3. Clique em **Atualizar Agora** — executa `git pull` no servidor e recarrega a página automaticamente
+
+> Requisito: deploy feito via `git clone` e Git acessível pelo PHP (ver seção cPanel acima).
+
+---
+
+### Atualização manual via SSH
+
+```bash
+cd ~/public_html   # ou o caminho da sua instalação
+git pull
+```
+
+Se houver conflito de arquivos locais modificados:
+
+```bash
+git stash          # salva alterações locais
+git pull           # atualiza
+git stash pop      # restaura alterações locais (se necessário)
+```
+
+---
+
+### Atualização manual via FTP
+
+1. Baixe a versão mais recente do repositório em [github.com/nowflowia/chatbot](https://github.com/nowflowia/chatbot)
+2. **Não sobrescreva** os seguintes arquivos/pastas:
+   - `.env` — suas configurações de ambiente
+   - `storage/` — logs e cache
+   - `public/assets/uploads/` — arquivos enviados pelos usuários
+3. Faça upload dos demais arquivos substituindo os existentes
+4. Se houver novas migrations, execute via SSH:
+
+```bash
+php migrate.php up
+```
+
+> Ou acesse `/install/` com o arquivo `storage/.installed` removido temporariamente (restaure após).
+
+---
+
 ## Configuração do WhatsApp Business API
 
 1. Acesse [developers.facebook.com](https://developers.facebook.com) e crie um App do tipo **Business**
