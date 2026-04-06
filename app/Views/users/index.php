@@ -9,10 +9,46 @@
     <h5 class="fw-bold mb-0 text-dark">Gerenciar Usuários</h5>
     <small class="text-muted">Total: <?= $pagination['total'] ?> usuário(s)</small>
   </div>
-  <button class="btn btn-primary d-flex align-items-center gap-2" onclick="openCreateModal()">
-    <i class="bi bi-person-plus-fill"></i> Novo Usuário
-  </button>
+  <?php $atLimit = $maxUsers !== null && $activeCount >= $maxUsers; ?>
+  <div class="d-flex align-items-center gap-3">
+    <?php if ($maxUsers !== null): ?>
+    <?php $pct = min(100, round($activeCount / $maxUsers * 100)); ?>
+    <div style="min-width:200px;">
+      <div class="d-flex justify-content-between mb-1 small">
+        <span class="text-muted fw-semibold">Usuários ativos</span>
+        <span class="fw-bold <?= $atLimit ? 'text-danger' : 'text-success' ?>">
+          <?= $activeCount ?> / <?= $maxUsers ?>
+        </span>
+      </div>
+      <div class="progress" style="height:8px;border-radius:4px;">
+        <div class="progress-bar <?= $atLimit ? 'bg-danger' : ($pct >= 80 ? 'bg-warning' : 'bg-success') ?>"
+             style="width:<?= $pct ?>%"></div>
+      </div>
+      <?php if ($atLimit): ?>
+      <div class="text-danger small mt-1"><i class="bi bi-exclamation-triangle me-1"></i>Limite atingido</div>
+      <?php else: ?>
+      <div class="text-muted small mt-1"><?= $maxUsers - $activeCount ?> vaga(s) disponível(is)</div>
+      <?php endif; ?>
+    </div>
+    <?php endif; ?>
+    <button class="btn btn-primary d-flex align-items-center gap-2"
+            onclick="openCreateModal()"
+            <?= $atLimit ? 'disabled title="Limite de usuários atingido"' : '' ?>>
+      <i class="bi bi-person-plus-fill"></i> Novo Usuário
+    </button>
+  </div>
 </div>
+
+<?php if ($atLimit): ?>
+<div class="alert alert-danger d-flex align-items-center gap-2 mb-4 small">
+  <i class="bi bi-shield-lock-fill fs-5"></i>
+  <div>
+    <strong>Limite de licença atingido.</strong>
+    Você possui <?= $maxUsers ?> usuário(s) ativo(s) permitido(s). Para adicionar mais, atualize sua licença em
+    <a href="https://nowflow.com.br" target="_blank" class="fw-semibold">nowflow.com.br</a>.
+  </div>
+</div>
+<?php endif; ?>
 
 <!-- Search bar -->
 <div class="card mb-3 p-3">

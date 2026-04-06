@@ -52,6 +52,25 @@ class AuthController extends Controller
             $this->jsonError('E-mail ou senha inválidos.', [], 401);
         }
 
+        // ── License seat check ────────────────────────────────────
+        try {
+            $license  = \App\Services\LicenseService::check();
+            $maxUsers = (int)($license['max_users'] ?? 0);
+            if ($license['valid'] && $maxUsers > 0 && $maxUsers < PHP_INT_MAX) {
+                $userId          = (int)Auth::id();
+                $allowedUserIds  = User::getFirstNActiveIds($maxUsers);
+                if (!in_array($userId, $allowedUserIds)) {
+                    Auth::logout();
+                    $this->jsonError(
+                        'Limite de usuários da licença atingido. Contate o administrador.',
+                        [], 403
+                    );
+                }
+            }
+        } catch (\Throwable $e) {
+            // License check failure must not block login
+        }
+
         // Update last login (non-critical)
         try { User::updateLastLogin((int)Auth::id(), $request->ip()); } catch (\Throwable $e) {}
 

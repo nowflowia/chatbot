@@ -23,8 +23,12 @@ class UserController extends Controller
         $search  = trim($request->get('search', ''));
         $perPage = 15;
 
-        $result = User::allWithRole($page, $perPage, $search);
-        $roles  = Role::allActive();
+        $result  = User::allWithRole($page, $perPage, $search);
+        $roles   = Role::allActive();
+        $license = LicenseService::check();
+        $maxUsers     = ($license['valid'] && ($license['max_users'] ?? 0) > 0 && $license['max_users'] < PHP_INT_MAX)
+                        ? (int)$license['max_users'] : null;
+        $activeCount  = User::countActive();
 
         return $this->view('users/index', [
             'users'       => $result['data'],
@@ -32,6 +36,9 @@ class UserController extends Controller
             'roles'       => $roles,
             'search'      => $search,
             'currentUser' => Auth::user(),
+            'maxUsers'    => $maxUsers,
+            'activeCount' => $activeCount,
+            'licenseValid'=> $license['valid'],
         ]);
     }
 
@@ -44,17 +51,15 @@ class UserController extends Controller
 
         // ── License check ─────────────────────────────────────────
         $license  = LicenseService::check();
-        $maxUsers = $license['max_users'] ?? 0;
+        $maxUsers = (int)($license['max_users'] ?? 0);
         if ($license['valid'] && $maxUsers > 0 && $maxUsers < PHP_INT_MAX) {
-            $currentCount = User::countAll();
-            if ($currentCount >= $maxUsers) {
+            $activeCount = User::countActive();
+            if ($activeCount >= $maxUsers) {
                 $this->jsonError(
-                    "Limite de {$maxUsers} usuário(s) atingido. Atualize sua licença para adicionar mais.",
+                    "Limite de {$maxUsers} usuário(s) ativo(s) atingido. Atualize sua licença para adicionar mais.",
                     [], 403
                 );
             }
-        } elseif (!$license['valid']) {
-            $this->jsonError('Licença inválida ou expirada. Contate o suporte.', [], 403);
         }
 
         $data = $request->only(['name', 'email', 'role_id', 'phone', 'status']);

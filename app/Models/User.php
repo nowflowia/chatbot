@@ -42,6 +42,26 @@ class User extends Model
         return (int)(Database::getInstance()->selectOne("SELECT COUNT(*) AS cnt FROM users")['cnt'] ?? 0);
     }
 
+    public static function countActive(): int
+    {
+        return (int)(Database::getInstance()->selectOne(
+            "SELECT COUNT(*) AS cnt FROM users WHERE status = 'active'"
+        )['cnt'] ?? 0);
+    }
+
+    /**
+     * Returns the IDs of the first N active users (ordered by id ASC).
+     * Used to enforce license seat limits even if users are added directly to the DB.
+     */
+    public static function getFirstNActiveIds(int $n): array
+    {
+        $rows = Database::getInstance()->select(
+            "SELECT id FROM users WHERE status = 'active' ORDER BY id ASC LIMIT ?",
+            [$n]
+        );
+        return array_column($rows, 'id');
+    }
+
     public static function allWithRole(int $page = 1, int $perPage = 20, string $search = ''): array
     {
         $db     = Database::getInstance();
