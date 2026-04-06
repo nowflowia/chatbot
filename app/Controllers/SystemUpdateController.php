@@ -7,9 +7,11 @@ use Core\Request;
 
 class SystemUpdateController extends Controller
 {
+    private const GITHUB_REPO = 'nowflowia/chatbot';
+    private const GITHUB_BRANCH = 'main';
+
     private function projectRoot(): string
     {
-        // public/index.php → two levels up = project root
         return dirname(PUBLIC_PATH);
     }
 
@@ -18,20 +20,27 @@ class SystemUpdateController extends Controller
     // ---------------------------------------------------------------
     public function index(Request $request): string
     {
-        $root       = $this->projectRoot();
-        $gitBin     = $this->findGit();
-        $gitVersion = $this->gitVersion($root);
-        $lastCommit = $this->lastCommit($root);
-        $hasRepo    = is_dir($root . '/.git');
-        $execEnabled= $this->run('echo ok') === 'ok';
+        $root        = $this->projectRoot();
+        $gitBin      = $this->findGit();
+        $gitVersion  = $this->gitVersion($root);
+        $hasRepo     = is_dir($root . '/.git');
+        $execEnabled = $this->run('echo ok') === 'ok';
+
+        // Current version from version.json
+        $localVersion = $this->readVersionJson($root);
+
+        // Current commit from local git (if available)
+        $lastCommit = $hasRepo && $gitBin ? $this->lastCommit($root) : [];
 
         return $this->view('system/update', [
-            'gitVersion'  => $gitVersion,
-            'lastCommit'  => $lastCommit,
-            'gitAvailable'=> $gitVersion !== null,
-            'gitBin'      => $gitBin,
-            'hasRepo'     => $hasRepo,
-            'execEnabled' => $execEnabled,
+            'gitVersion'   => $gitVersion,
+            'lastCommit'   => $lastCommit,
+            'gitAvailable' => ($gitVersion !== null && $hasRepo),
+            'gitBin'       => $gitBin,
+            'hasRepo'      => $hasRepo,
+            'execEnabled'  => $execEnabled,
+            'localVersion' => $localVersion,
+            'gitPathHint'  => env('GIT_PATH', ''),
         ]);
     }
 
@@ -50,100 +59,133 @@ class SystemUpdateController extends Controller
 
         $gitBin = $this->findGit();
         if (!$gitBin) {
-            $this->jsonError('Git não está disponível no servidor.', [], 500);
+            $this->jsonError('Git não está disponível. Defina GIT_PATH no arquivo .env com o caminho completo do git.', [], 500);
         }
 
-        // Run git pull
-        $output = $this->run(escapeshellarg($gitBin) . ' -C ' . escapeshellarg($root) . ' pull --ff-only');
-        $output = trim($output ?? '');
+        $g   = escapeshellarg($gitBin) . ' -C ' . escapeshellarg($root);
+        $out = $this->run("$g pull --ff-only origin " . self::GITHUB_BRANCH);
+        $out = trim($out ?? '');
 
-        // Detect success
-        $success = str_contains($output, 'Already up to date')
-                || str_contains($output, 'Already up-to-date')
-                || str_contains($output, 'Fast-forward')
-                || preg_match('/\d+ file.* changed/', $output);
-
-        if (!$success && str_contains(strtolower($output), 'error')) {
-            $this->jsonError('Erro ao atualizar: ' . $output, [], 500);
+        if (str_contains(strtolower($out), 'error') || str_contains(strtolower($out), 'fatal')) {
+            $this->jsonError('Erro ao atualizar: ' . $out, [], 500);
         }
 
+        $upToDate   = str_contains($out, 'Already up to date') || str_contains($out, 'Already up-to-date');
         $lastCommit = $this->lastCommit($root);
 
         $this->jsonSuccess(
-            str_contains($output, 'Already up to date') || str_contains($output, 'Already up-to-date')
-                ? 'Sistema já está na versão mais recente.'
-                : 'Sistema atualizado com sucesso!',
-            [
-                'output'     => $output,
-                'last_commit'=> $lastCommit,
-            ]
+            $upToDate ? 'Sistema já está na versão mais recente.' : 'Sistema atualizado com sucesso!',
+            ['output' => $out, 'last_commit' => $lastCommit]
         );
     }
 
     // ---------------------------------------------------------------
-    // POST /admin/system-update/status  — check if updates available
+    // POST /admin/system-update/status  — check versions
     // ---------------------------------------------------------------
     public function status(Request $request): void
     {
         $this->requireAjax();
 
-        $root = $this->projectRoot();
-
-        if (!is_dir($root . '/.git')) {
-            $this->jsonError('Repositório Git não encontrado.', [], 500);
-        }
-
+        $root   = $this->projectRoot();
         $gitBin = $this->findGit();
-        if (!$gitBin) {
-            $this->jsonError('Git não disponível.', [], 500);
+        $hasRepo= is_dir($root . '/.git');
+
+        // Local commit hash
+        $localHash = '';
+        if ($hasRepo && $gitBin) {
+            $g = escapeshellarg($gitBin) . ' -C ' . escapeshellarg($root);
+            $this->run("$g fetch --quiet origin " . self::GITHUB_BRANCH);
+            $localHash = trim($this->run("$g rev-parse HEAD") ?? '');
+        } else {
+            // Fallback: read from version.json
+            $v = $this->readVersionJson($root);
+            $localHash = $v['commit'] ?? '';
         }
 
-        $g = escapeshellarg($gitBin) . ' -C ' . escapeshellarg($root);
+        // Remote commit via GitHub API
+        $remote = $this->fetchGitHubLatest();
 
-        // Fetch remote silently
-        $this->run("$g fetch --quiet");
+        if (!$remote) {
+            $this->jsonError('Não foi possível consultar o GitHub. Verifique a conexão do servidor.', [], 503);
+        }
 
-        // Compare local HEAD vs remote
-        $local  = trim($this->run("$g rev-parse HEAD") ?? '');
-        $remote = trim($this->run("$g rev-parse @{u}") ?? '');
+        $remoteHash = $remote['sha'] ?? '';
+        $upToDate   = $localHash && $remoteHash && str_starts_with($remoteHash, $localHash)
+                   || str_starts_with($localHash, substr($remoteHash, 0, 7));
 
-        $upToDate = ($local === $remote) || empty($remote) || str_contains($remote, 'fatal');
-
-        // Count pending commits
+        // Count pending commits if local git available
         $pending = 0;
-        if (!$upToDate) {
+        if ($hasRepo && $gitBin && !$upToDate && $localHash && $remoteHash) {
+            $g       = escapeshellarg($gitBin) . ' -C ' . escapeshellarg($root);
             $count   = trim($this->run("$g rev-list HEAD..@{u} --count") ?? '0');
             $pending = (int)$count;
         }
 
+        $lastCommit = ($hasRepo && $gitBin) ? $this->lastCommit($root) : $this->readVersionJson($root);
+
         $this->jsonSuccess('OK', [
-            'up_to_date'  => $upToDate,
-            'pending'     => $pending,
-            'local_hash'  => substr($local, 0, 7),
-            'remote_hash' => substr($remote, 0, 7),
-            'last_commit' => $this->lastCommit($root),
+            'up_to_date'     => $upToDate,
+            'pending'        => $pending,
+            'local_hash'     => substr($localHash, 0, 7),
+            'remote_hash'    => substr($remoteHash, 0, 7),
+            'remote_commit'  => $remote,
+            'last_commit'    => $lastCommit,
         ]);
     }
 
     // ── Private helpers ───────────────────────────────────────────
 
+    private function fetchGitHubLatest(): ?array
+    {
+        $url = 'https://api.github.com/repos/' . self::GITHUB_REPO . '/commits/' . self::GITHUB_BRANCH;
+        $ctx = stream_context_create(['http' => [
+            'timeout'       => 8,
+            'ignore_errors' => true,
+            'header'        => "User-Agent: ChatBot-System/1.0\r\n",
+        ]]);
+        try {
+            $resp = @file_get_contents($url, false, $ctx);
+            $data = $resp ? json_decode($resp, true) : null;
+            if (!is_array($data) || empty($data['sha'])) return null;
+            return [
+                'sha'     => $data['sha'],
+                'message' => strtok($data['commit']['message'] ?? '', "\n"),
+                'author'  => $data['commit']['author']['name'] ?? '',
+                'date'    => $data['commit']['author']['date'] ?? '',
+            ];
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    private function readVersionJson(string $root): array
+    {
+        $file = $root . '/version.json';
+        if (!file_exists($file)) return [];
+        $data = json_decode(file_get_contents($file), true);
+        return is_array($data) ? $data : [];
+    }
+
     private function findGit(): ?string
     {
+        // Allow explicit path via .env
+        $envPath = env('GIT_PATH', '');
+        if ($envPath && @is_executable($envPath)) return $envPath;
+
         $candidates = [
             '/usr/bin/git',
             '/usr/local/bin/git',
             '/usr/local/cpanel/3rdparty/bin/git',
             '/opt/cpanel/ea-git/root/usr/bin/git',
             '/opt/cpanel/ea-git/root/usr/libexec/git-core/git',
-            '/opt/homebrew/bin/git',
             '/usr/libexec/git-core/git',
+            '/opt/homebrew/bin/git',
         ];
         foreach ($candidates as $path) {
             if (@is_executable($path)) return $path;
         }
-        // try which/where via exec (less likely to be disabled)
         $which = $this->run('which git');
-        if ($which && str_starts_with($which, '/') && @is_executable(trim($which))) {
+        if ($which && str_starts_with(trim($which), '/') && @is_executable(trim($which))) {
             return trim($which);
         }
         return null;
@@ -175,27 +217,29 @@ class SystemUpdateController extends Controller
         ];
     }
 
-    /**
-     * Run a shell command using whichever function is available.
-     * Returns trimmed stdout+stderr, or null if all disabled.
-     */
     private function run(string $cmd): ?string
     {
         $cmd .= ' 2>&1';
-        if (function_exists('shell_exec') && !in_array('shell_exec', array_map('trim', explode(',', ini_get('disable_functions'))))) {
+        $disabled = array_map('trim', explode(',', ini_get('disable_functions')));
+
+        if (function_exists('shell_exec') && !in_array('shell_exec', $disabled)) {
             $out = @shell_exec($cmd);
             if ($out !== null) return trim($out);
         }
-        if (function_exists('exec')) {
+        if (function_exists('exec') && !in_array('exec', $disabled)) {
             $lines = [];
             @exec($cmd, $lines);
             if ($lines) return trim(implode("\n", $lines));
         }
-        if (function_exists('system')) {
-            ob_start();
-            @system($cmd);
-            $out = ob_get_clean();
-            if ($out !== false && $out !== '') return trim($out);
+        if (function_exists('proc_open') && !in_array('proc_open', $disabled)) {
+            $desc = [1 => ['pipe','w'], 2 => ['pipe','w']];
+            $proc = @proc_open($cmd, $desc, $pipes);
+            if ($proc) {
+                $out = stream_get_contents($pipes[1]) . stream_get_contents($pipes[2]);
+                fclose($pipes[1]); fclose($pipes[2]);
+                proc_close($proc);
+                return trim($out);
+            }
         }
         return null;
     }

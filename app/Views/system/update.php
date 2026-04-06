@@ -4,57 +4,72 @@
 <?php \Core\View::section('content') ?>
 
 <div class="row justify-content-center">
-  <div class="col-lg-7">
+  <div class="col-lg-8">
 
-    <!-- Status card -->
-    <div class="card border-0 shadow-sm mb-4" id="status-card">
+    <!-- Version comparison card -->
+    <div class="card border-0 shadow-sm mb-4">
       <div class="card-body p-4">
-        <div class="d-flex align-items-center gap-3 mb-3">
-          <div id="status-icon-wrap"
-               style="width:52px;height:52px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="bi bi-cloud-arrow-down-fill fs-4 text-primary" id="status-icon"></i>
-          </div>
-          <div>
-            <h6 class="fw-bold mb-0" id="status-title">Verificando atualizações…</h6>
-            <small class="text-muted" id="status-sub">Consultando o repositório remoto</small>
-          </div>
-          <button class="btn btn-sm btn-outline-secondary ms-auto d-flex align-items-center gap-2"
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h6 class="fw-bold mb-0">Versões</h6>
+          <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2"
                   id="btn-check" onclick="checkStatus()">
-            <i class="bi bi-arrow-clockwise" id="check-icon"></i> Verificar
+            <i class="bi bi-arrow-clockwise" id="check-icon"></i> Verificar atualização
           </button>
         </div>
 
-        <!-- Commit info -->
-        <?php if (!empty($lastCommit)): ?>
-        <div class="bg-light rounded p-3 small" id="commit-block">
-          <div class="text-muted mb-1 fw-semibold">Versão instalada</div>
-          <div class="d-flex align-items-start gap-2">
-            <code class="text-primary fw-bold" id="commit-hash"><?= e($lastCommit['hash'] ?? '') ?></code>
-            <span id="commit-subject" class="text-dark"><?= e($lastCommit['subject'] ?? '') ?></span>
+        <div class="row g-3">
+          <!-- Local version -->
+          <div class="col-md-6">
+            <div class="bg-light rounded p-3">
+              <div class="text-muted small fw-semibold mb-2">
+                <i class="bi bi-hdd me-1"></i> Versão Instalada
+              </div>
+              <?php if (!empty($lastCommit['hash'])): ?>
+              <code class="text-primary fw-bold fs-6" id="local-hash"><?= e($lastCommit['hash']) ?></code>
+              <div class="text-dark small mt-1" id="local-subject"><?= e($lastCommit['subject'] ?? '') ?></div>
+              <div class="text-muted mt-1" style="font-size:.72rem;">
+                <i class="bi bi-person me-1"></i><span id="local-author"><?= e($lastCommit['author'] ?? '') ?></span>
+                &nbsp;·&nbsp;
+                <i class="bi bi-clock me-1"></i><span id="local-date"><?= e($lastCommit['date'] ?? '') ?></span>
+              </div>
+              <?php elseif (!empty($localVersion)): ?>
+              <div class="fw-bold text-primary" id="local-hash">v<?= e($localVersion['version'] ?? '?') ?></div>
+              <div class="text-muted small mt-1" id="local-subject"><?= e($localVersion['changelog'] ?? '') ?></div>
+              <div class="text-muted mt-1" style="font-size:.72rem;" id="local-date"><?= e($localVersion['released_at'] ?? '') ?></div>
+              <?php else: ?>
+              <div class="text-muted small" id="local-hash">Desconhecida</div>
+              <?php endif; ?>
+            </div>
           </div>
-          <div class="text-muted mt-1" style="font-size:.72rem;">
-            <i class="bi bi-person me-1"></i><span id="commit-author"><?= e($lastCommit['author'] ?? '') ?></span>
-            &nbsp;·&nbsp;
-            <i class="bi bi-clock me-1"></i><span id="commit-date"><?= e($lastCommit['date'] ?? '') ?></span>
-          </div>
-        </div>
-        <?php else: ?>
-        <div class="bg-light rounded p-3 small text-muted" id="commit-block">
-          <?php if (!$gitAvailable): ?>
-          <i class="bi bi-exclamation-triangle text-warning me-1"></i>
-          Git não está disponível neste servidor ou o repositório não foi inicializado.
-          <?php else: ?>
-          Carregando informações do commit…
-          <?php endif; ?>
-        </div>
-        <?php endif; ?>
 
-        <!-- Pending commits badge -->
-        <div id="pending-info" class="mt-3" style="display:none;">
-          <div class="alert alert-warning py-2 small mb-0 d-flex align-items-center gap-2">
-            <i class="bi bi-arrow-up-circle-fill"></i>
-            <span id="pending-text"></span>
+          <!-- Remote version -->
+          <div class="col-md-6">
+            <div class="bg-light rounded p-3">
+              <div class="text-muted small fw-semibold mb-2">
+                <i class="bi bi-github me-1"></i> Versão no Repositório
+              </div>
+              <div id="remote-loading" class="text-muted small">
+                <span class="spinner-border spinner-border-sm me-2"></span>Consultando GitHub…
+              </div>
+              <div id="remote-info" style="display:none;">
+                <code class="text-success fw-bold fs-6" id="remote-hash">—</code>
+                <div class="text-dark small mt-1" id="remote-subject">—</div>
+                <div class="text-muted mt-1" style="font-size:.72rem;">
+                  <i class="bi bi-person me-1"></i><span id="remote-author">—</span>
+                  &nbsp;·&nbsp;
+                  <i class="bi bi-clock me-1"></i><span id="remote-date">—</span>
+                </div>
+              </div>
+              <div id="remote-error" style="display:none;" class="text-danger small">
+                <i class="bi bi-exclamation-triangle me-1"></i><span id="remote-error-msg"></span>
+              </div>
+            </div>
           </div>
+        </div>
+
+        <!-- Status banner -->
+        <div id="status-banner" class="mt-3" style="display:none;">
+          <div id="status-banner-inner" class="alert py-2 small mb-0 d-flex align-items-center gap-2"></div>
         </div>
       </div>
     </div>
@@ -65,12 +80,10 @@
       <div class="card-body p-4">
         <h6 class="fw-bold mb-1">Atualizar Sistema</h6>
         <p class="text-muted small mb-3">
-          Executa <code>git pull</code> no servidor, baixando e aplicando os commits mais recentes do repositório.
-          Após a atualização, a página será recarregada automaticamente.
+          Executa <code>git pull origin main</code> no servidor, baixando e aplicando os commits mais recentes.
+          A página recarrega automaticamente após a atualização.
         </p>
-
         <div id="pull-alert" class="mb-3" style="display:none;"></div>
-
         <div class="d-flex align-items-center gap-3">
           <button class="btn btn-primary fw-semibold px-4 d-flex align-items-center gap-2"
                   id="btn-pull" onclick="runPull()">
@@ -78,13 +91,13 @@
             <i class="bi bi-cloud-download-fill" id="pull-icon"></i>
             <span id="pull-btn-text">Atualizar Agora</span>
           </button>
-          <small class="text-muted">Recomenda-se fazer backup antes de atualizar.</small>
+          <small class="text-muted">Recomenda-se backup antes de atualizar.</small>
         </div>
       </div>
     </div>
 
     <!-- Output log -->
-    <div class="card border-0 shadow-sm" id="output-card" style="display:none;">
+    <div class="card border-0 shadow-sm mb-4" id="output-card" style="display:none;">
       <div class="card-header bg-dark d-flex align-items-center gap-2 py-2 px-3" style="border-radius:.5rem .5rem 0 0;">
         <i class="bi bi-terminal-fill text-success small"></i>
         <span class="text-white small fw-semibold">Saída do Git</span>
@@ -94,33 +107,93 @@
              style="margin:0;padding:1rem;background:#1e1e1e;color:#d4d4d4;font-size:.8rem;border-radius:0 0 .5rem .5rem;overflow-x:auto;white-space:pre-wrap;word-break:break-all;"></pre>
       </div>
     </div>
+
     <?php else: ?>
-    <div class="alert alert-warning d-flex gap-2 mb-3">
-      <i class="bi bi-exclamation-triangle-fill mt-1 flex-shrink-0"></i>
-      <div>
-        <strong>Atualização automática não disponível.</strong>
-        <ul class="mb-0 mt-2 small">
-          <?php if (!$execEnabled): ?>
-          <li><strong>shell_exec / exec estão desabilitados</strong> no php.ini deste servidor.
-              No cPanel vá em <em>Software → Select PHP Version → Extensions</em> e verifique as funções bloqueadas em <code>disable_functions</code>.</li>
+
+    <!-- Diagnostics -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3 text-warning"><i class="bi bi-exclamation-triangle me-2"></i>Atualização automática não disponível</h6>
+
+        <div class="d-flex flex-column gap-3">
+
+          <!-- Exec check -->
+          <div class="d-flex align-items-start gap-3 p-3 rounded"
+               style="background:<?= $execEnabled ? '#f0fdf4' : '#fef2f2' ?>">
+            <i class="bi <?= $execEnabled ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger' ?> fs-5 mt-1 flex-shrink-0"></i>
+            <div>
+              <div class="fw-semibold small"><?= $execEnabled ? 'Execução de comandos: OK' : 'Execução de comandos: Bloqueada' ?></div>
+              <?php if (!$execEnabled): ?>
+              <div class="text-muted small mt-1">
+                <code>shell_exec</code>, <code>exec</code> e <code>proc_open</code> estão desabilitados.<br>
+                No cPanel: <strong>Software → Select PHP Version → aba "Options"</strong> → remova essas funções do campo <code>disable_functions</code>.
+              </div>
+              <?php endif; ?>
+            </div>
+          </div>
+
+          <!-- Git binary check -->
+          <div class="d-flex align-items-start gap-3 p-3 rounded"
+               style="background:<?= $gitBin ? '#f0fdf4' : '#fef2f2' ?>">
+            <i class="bi <?= $gitBin ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger' ?> fs-5 mt-1 flex-shrink-0"></i>
+            <div>
+              <div class="fw-semibold small"><?= $gitBin ? 'Git encontrado: ' . e($gitBin) : 'Git: não encontrado nos caminhos padrão' ?></div>
+              <?php if (!$gitBin): ?>
+              <div class="text-muted small mt-1">
+                Via SSH, execute <code>which git</code> para obter o caminho correto e adicione ao <code>.env</code>:<br>
+                <code>GIT_PATH=/caminho/para/git</code>
+              </div>
+              <?php endif; ?>
+            </div>
+          </div>
+
+          <!-- Git path from .env -->
+          <?php if ($gitPathHint): ?>
+          <div class="d-flex align-items-start gap-3 p-3 rounded" style="background:#fef3c7">
+            <i class="bi bi-info-circle-fill text-warning fs-5 mt-1 flex-shrink-0"></i>
+            <div class="small">
+              <strong>GIT_PATH configurado:</strong> <code><?= e($gitPathHint) ?></code><br>
+              <span class="text-muted">Este caminho não está acessível pelo processo PHP. Verifique se o arquivo existe e tem permissão de execução.</span>
+            </div>
+          </div>
           <?php endif; ?>
-          <?php if (!$gitBin): ?>
-          <li><strong>Git não encontrado</strong> nos caminhos padrão. No cPanel o caminho costuma ser
-              <code>/usr/local/cpanel/3rdparty/bin/git</code> ou <code>/opt/cpanel/ea-git/root/usr/bin/git</code>.
-              Confirme rodando <code>which git</code> via SSH.</li>
-          <?php endif; ?>
-          <?php if (!$hasRepo): ?>
-          <li><strong>Repositório Git não inicializado</strong> neste diretório. Faça o deploy via
-              <code>git clone</code> em vez de upload manual de arquivos.</li>
-          <?php endif; ?>
-        </ul>
-        <div class="mt-2">Como alternativa, faça a atualização via SSH: <code>git -C <?= e(dirname(PUBLIC_PATH)) ?> pull</code></div>
+
+          <!-- Repo check -->
+          <div class="d-flex align-items-start gap-3 p-3 rounded"
+               style="background:<?= $hasRepo ? '#f0fdf4' : '#fef2f2' ?>">
+            <i class="bi <?= $hasRepo ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger' ?> fs-5 mt-1 flex-shrink-0"></i>
+            <div>
+              <div class="fw-semibold small"><?= $hasRepo ? 'Repositório Git: inicializado' : 'Repositório Git: não encontrado' ?></div>
+              <?php if (!$hasRepo): ?>
+              <div class="text-muted small mt-1">
+                O sistema foi instalado via FTP/upload. Via SSH, inicialize o repositório:<br>
+                <code>cd <?= e(dirname(PUBLIC_PATH)) ?></code><br>
+                <code>git init && git remote add origin https://github.com/nowflowia/chatbot.git</code><br>
+                <code>git fetch && git reset --hard origin/main</code>
+              </div>
+              <?php endif; ?>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Manual update via SSH -->
+        <div class="mt-4 p-3 bg-light rounded">
+          <div class="fw-semibold small mb-2"><i class="bi bi-terminal me-1"></i>Atualização manual via SSH</div>
+          <pre class="mb-0" style="font-size:.8rem;background:transparent;">cd <?= e(dirname(PUBLIC_PATH)) ?>
+
+git pull origin main</pre>
+          <div class="text-muted small mt-2">
+            Caso dê erro de branch: <code>git branch --set-upstream-to=origin/main master && git pull origin main</code>
+          </div>
+        </div>
       </div>
     </div>
+
     <?php endif; ?>
 
-    <!-- System info -->
-    <div class="card border-0 shadow-sm mt-4">
+    <!-- Environment info -->
+    <div class="card border-0 shadow-sm">
       <div class="card-body p-4">
         <h6 class="fw-bold mb-3 small text-muted text-uppercase">Informações do Ambiente</h6>
         <table class="table table-sm table-borderless mb-0 small">
@@ -139,7 +212,11 @@
             </tr>
             <tr>
               <td class="text-muted">Diretório</td>
-              <td class="fw-semibold text-truncate" style="max-width:300px;"><?= e(dirname(PUBLIC_PATH)) ?></td>
+              <td class="fw-semibold"><?= e(dirname(PUBLIC_PATH)) ?></td>
+            </tr>
+            <tr>
+              <td class="text-muted">Repositório Git</td>
+              <td class="fw-semibold"><?= $hasRepo ? '<span class="text-success">Inicializado</span>' : '<span class="text-danger">Não inicializado</span>' ?></td>
             </tr>
           </tbody>
         </table>
@@ -163,45 +240,45 @@ document.addEventListener('DOMContentLoaded', checkStatus);
 function checkStatus() {
   const btn  = document.getElementById('btn-check');
   const icon = document.getElementById('check-icon');
-  if (btn) btn.disabled = true;
+  if (btn)  btn.disabled = true;
   if (icon) icon.style.animation = 'spin 1s linear infinite';
 
-  setStatusLoading('Verificando atualizações…', 'Consultando o repositório remoto');
+  showRemoteLoading();
+  hideBanner();
 
   const fd = new FormData();
   fd.append('_csrf_token', CSRF);
 
   fetch('<?= url('admin/system-update/status') ?>', {
-    method: 'POST',
-    body: fd,
+    method: 'POST', body: fd,
     headers: { 'X-Requested-With': 'XMLHttpRequest' }
   })
     .then(r => r.json())
     .then(res => {
-      if (btn) btn.disabled = false;
+      if (btn)  btn.disabled = false;
       if (icon) icon.style.animation = '';
 
       if (!res.success) {
-        setStatusError(res.message || 'Erro ao verificar.');
+        showRemoteError(res.message || 'Erro ao verificar.');
         return;
       }
 
       const d = res.data;
-      updateCommitBlock(d.last_commit);
+      showRemoteCommit(d.remote_commit, d.remote_hash);
+      updateLocalCommit(d.last_commit, d.local_hash);
 
       if (d.up_to_date) {
-        setStatusOk('Sistema atualizado', 'Você está na versão mais recente.');
-        hidePending();
+        showBanner('success', '<i class="bi bi-check-circle-fill"></i> Sistema atualizado — você está na versão mais recente.');
       } else {
-        const n = d.pending;
-        setStatusWarning('Atualização disponível', `${n} commit(s) novo(s) no repositório remoto.`);
-        showPending(n);
+        const n = d.pending || '';
+        const msg = n ? `${n} commit(s) disponível(is) para atualização.` : 'Nova versão disponível no repositório.';
+        showBanner('warning', '<i class="bi bi-arrow-up-circle-fill"></i> ' + msg);
       }
     })
-    .catch(() => {
-      if (btn) btn.disabled = false;
+    .catch(e => {
+      if (btn)  btn.disabled = false;
       if (icon) icon.style.animation = '';
-      setStatusError('Não foi possível verificar. Verifique a conexão com o repositório.');
+      showRemoteError('Não foi possível consultar o GitHub.');
     });
 }
 
@@ -214,7 +291,7 @@ function runPull() {
   const outCard= document.getElementById('output-card');
   const output = document.getElementById('git-output');
 
-  btn.disabled    = true;
+  btn.disabled = true;
   spin.classList.remove('d-none');
   icon.style.display = 'none';
   btnTxt.textContent = 'Atualizando…';
@@ -224,8 +301,7 @@ function runPull() {
   fd.append('_csrf_token', CSRF);
 
   fetch('<?= url('admin/system-update/pull') ?>', {
-    method: 'POST',
-    body: fd,
+    method: 'POST', body: fd,
     headers: { 'X-Requested-With': 'XMLHttpRequest' }
   })
     .then(r => r.json())
@@ -235,21 +311,18 @@ function runPull() {
       icon.style.display = '';
       btnTxt.textContent = 'Atualizar Agora';
 
-      // Show git output
       if (res.data?.output) {
         output.textContent = res.data.output;
         outCard.style.display = '';
       }
 
+      alert.style.display = '';
       if (res.success) {
-        alert.style.display = '';
-        alert.innerHTML = '<div class="alert alert-success py-2 small d-flex gap-2"><i class="bi bi-check-circle-fill mt-1 text-success"></i><span>' + res.message + '</span></div>';
-        updateCommitBlock(res.data?.last_commit);
-        setStatusOk('Sistema atualizado', 'Recarregando em 3 segundos…');
-        hidePending();
+        alert.innerHTML = '<div class="alert alert-success py-2 small d-flex gap-2"><i class="bi bi-check-circle-fill text-success mt-1"></i><span>' + res.message + ' Recarregando em 3 segundos…</span></div>';
+        updateLocalCommit(res.data?.last_commit, '');
+        showBanner('success', '<i class="bi bi-check-circle-fill"></i> ' + res.message);
         setTimeout(() => location.reload(), 3000);
       } else {
-        alert.style.display = '';
         alert.innerHTML = '<div class="alert alert-danger py-2 small d-flex gap-2"><i class="bi bi-exclamation-triangle-fill mt-1"></i><span>' + res.message + '</span></div>';
       }
     })
@@ -265,50 +338,53 @@ function runPull() {
 
 // ── helpers ───────────────────────────────────────────────────────
 
-function setStatusLoading(title, sub) {
-  setStatus('#f1f5f9', 'text-primary', 'bi-arrow-repeat', title, sub, true);
+function showRemoteLoading() {
+  el('remote-loading').style.display = '';
+  el('remote-info').style.display    = 'none';
+  el('remote-error').style.display   = 'none';
 }
-function setStatusOk(title, sub) {
-  setStatus('#dcfce7', 'text-success', 'bi-check-circle-fill', title, sub);
+function showRemoteCommit(commit, hash) {
+  el('remote-loading').style.display = 'none';
+  el('remote-info').style.display    = '';
+  el('remote-error').style.display   = 'none';
+  el('remote-hash').textContent    = hash || (commit?.sha || '').substring(0,7) || '—';
+  el('remote-subject').textContent = commit?.message || '—';
+  el('remote-author').textContent  = commit?.author  || '—';
+  el('remote-date').textContent    = commit?.date ? formatDate(commit.date) : '—';
 }
-function setStatusWarning(title, sub) {
-  setStatus('#fef3c7', 'text-warning', 'bi-exclamation-circle-fill', title, sub);
+function showRemoteError(msg) {
+  el('remote-loading').style.display = 'none';
+  el('remote-info').style.display    = 'none';
+  el('remote-error').style.display   = '';
+  el('remote-error-msg').textContent = msg;
 }
-function setStatusError(msg) {
-  setStatus('#fee2e2', 'text-danger', 'bi-x-circle-fill', 'Erro', msg);
-}
-function setStatus(bg, textClass, icon, title, sub, spin = false) {
-  const wrap = document.getElementById('status-icon-wrap');
-  const ico  = document.getElementById('status-icon');
-  const ttl  = document.getElementById('status-title');
-  const sub_ = document.getElementById('status-sub');
-  if (wrap) wrap.style.background = bg;
-  if (ico)  { ico.className = 'bi ' + icon + ' fs-4 ' + textClass; ico.style.animation = spin ? 'spin 1s linear infinite' : ''; }
-  if (ttl)  ttl.textContent = title;
-  if (sub_) sub_.textContent = sub;
-}
-
-function showPending(n) {
-  const el = document.getElementById('pending-info');
-  const tx = document.getElementById('pending-text');
-  if (el) el.style.display = '';
-  if (tx) tx.textContent = `Há ${n} commit(s) disponível(is) para atualização.`;
-}
-function hidePending() {
-  const el = document.getElementById('pending-info');
-  if (el) el.style.display = 'none';
-}
-
-function updateCommitBlock(commit) {
+function updateLocalCommit(commit, hash) {
   if (!commit) return;
-  const h = document.getElementById('commit-hash');
-  const s = document.getElementById('commit-subject');
-  const a = document.getElementById('commit-author');
-  const d = document.getElementById('commit-date');
-  if (h) h.textContent = commit.hash    || '';
-  if (s) s.textContent = commit.subject || '';
-  if (a) a.textContent = commit.author  || '';
-  if (d) d.textContent = commit.date    || '';
+  const h = el('local-hash');
+  const s = el('local-subject');
+  const a = el('local-author');
+  const d = el('local-date');
+  if (h) h.textContent = commit.hash    || hash || '—';
+  if (s) s.textContent = commit.subject || commit.changelog || '—';
+  if (a) a.textContent = commit.author  || '—';
+  if (d) d.textContent = commit.date    || commit.released_at || '—';
+}
+function showBanner(type, html) {
+  const b = el('status-banner');
+  const i = el('status-banner-inner');
+  if (!b || !i) return;
+  i.className = 'alert py-2 small mb-0 d-flex align-items-center gap-2 alert-' + type;
+  i.innerHTML = html;
+  b.style.display = '';
+}
+function hideBanner() {
+  const b = el('status-banner');
+  if (b) b.style.display = 'none';
+}
+function el(id) { return document.getElementById(id); }
+function formatDate(iso) {
+  try { return new Date(iso).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+  catch { return iso; }
 }
 </script>
 <?php \Core\View::endSection() ?>
