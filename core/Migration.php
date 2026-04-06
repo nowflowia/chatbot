@@ -116,6 +116,24 @@ class Blueprint
         return $this;
     }
 
+    public function decimal(string $name, int $total = 8, int $places = 2): static
+    {
+        $this->columns[] = "`{$name}` DECIMAL({$total},{$places})";
+        return $this;
+    }
+
+    public function date(string $name): static
+    {
+        $this->columns[] = "`{$name}` DATE";
+        return $this;
+    }
+
+    public function dateTime(string $name): static
+    {
+        $this->columns[] = "`{$name}` DATETIME";
+        return $this;
+    }
+
     public function json(string $name): static
     {
         $this->columns[] = "`{$name}` JSON";

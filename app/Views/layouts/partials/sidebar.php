@@ -53,6 +53,38 @@ $avatarBg     = $avatarColors[ord(($authUser['name'] ?? 'U')[0]) % count($avatar
       </li>
     </ul>
 
+    <?php if (\Core\Auth::hasFeature('crm')): ?>
+    <div class="nav-section-title">CRM</div>
+    <ul class="nav flex-column">
+      <li>
+        <a href="<?= url('admin/crm') ?>" class="nav-link<?= isActive('/crm') ?>">
+          <i class="bi bi-kanban-fill"></i>
+          <span class="link-label">Negociações</span>
+        </a>
+      </li>
+      <li>
+        <a href="<?= url('admin/crm/companies') ?>" class="nav-link<?= isActive('crm/companies') ?>">
+          <i class="bi bi-building"></i>
+          <span class="link-label">Empresas</span>
+        </a>
+      </li>
+      <li>
+        <a href="<?= url('admin/crm/contacts') ?>" class="nav-link<?= isActive('crm/contacts') ?>">
+          <i class="bi bi-person-lines-fill"></i>
+          <span class="link-label">Contatos</span>
+        </a>
+      </li>
+      <?php if (\Core\Auth::isSupervisorOrAdmin()): ?>
+      <li>
+        <a href="<?= url('admin/crm/settings') ?>" class="nav-link<?= isActive('crm/settings') ?>">
+          <i class="bi bi-sliders"></i>
+          <span class="link-label">Configurar CRM</span>
+        </a>
+      </li>
+      <?php endif; ?>
+    </ul>
+    <?php endif; ?>
+
     <div class="nav-section-title">Automação</div>
     <ul class="nav flex-column">
       <li>

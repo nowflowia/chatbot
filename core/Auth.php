@@ -81,6 +81,25 @@ class Auth
         return static::hasRole('admin');
     }
 
+    public static function isSupervisorOrAdmin(): bool
+    {
+        return static::hasRole('admin') || static::hasRole('supervisor');
+    }
+
+    public static function hasFeature(string $feature): bool
+    {
+        // Dev mode: no LICENSE_API_URL configured → allow all features
+        $apiUrl = config('app.license_api_url', env('LICENSE_API_URL', ''));
+        $key    = config('app.license_key',     env('LICENSE_KEY', ''));
+        if (!$apiUrl || !$key) {
+            return true;
+        }
+
+        $license  = \App\Services\LicenseService::check();
+        $features = $license['features'] ?? [];
+        return in_array($feature, $features, true);
+    }
+
     public static function refreshUser(): void
     {
         $id = static::id();

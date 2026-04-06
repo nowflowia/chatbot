@@ -367,6 +367,7 @@
   transition: background .15s;
 }
 .node-port:hover     { background: #6366f1; border-color: #6366f1; }
+.node-port.port-target { background: #10b981; border-color: #10b981; transform: scale(1.4); }
 .node-port.port-in   { margin-left: -6px; }
 .node-port.port-out  { margin-right: -6px; }
 .port-label-out      { font-size: .65rem; color: #94a3b8; margin-right: 4px; align-self: center; }
@@ -405,7 +406,9 @@
   .palette-item span { display: none; }
 }
 </style>
+<?php \Core\View::endSection() ?>
 
+<?php \Core\View::section('scripts') ?>
 <script>
 (function () {
 'use strict';
@@ -649,6 +652,41 @@ window.addEventListener('mousemove', e => {
     panX = panStartPanX + (e.clientX - panStartX);
     panY = panStartPanY + (e.clientY - panStartY);
     render();
+  } else if (connectingFrom) {
+    // Draw a temporary SVG line from source port to cursor
+    const srcEl   = canvas.querySelector(`.flow-node[data-id="${connectingFrom.nodeId}"]`);
+    const srcPort = srcEl ? srcEl.querySelector('.port-out') : null;
+    if (srcPort) {
+      const wr = canvasWrap.getBoundingClientRect();
+      const sp = portCenter(srcEl, srcPort);
+      const tx = (e.clientX - wr.left - panX) / scale;
+      const ty = (e.clientY - wr.top  - panY) / scale;
+      // Remove old temp line
+      const old = svg.querySelector('#conn-temp');
+      if (old) old.remove();
+      const cx1 = sp.x + Math.abs(tx - sp.x) * 0.5;
+      const cy1 = sp.y;
+      const cx2 = tx - Math.abs(tx - sp.x) * 0.5;
+      const cy2 = ty;
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('id', 'conn-temp');
+      path.setAttribute('d', `M${sp.x},${sp.y} C${cx1},${cy1} ${cx2},${cy2} ${tx},${ty}`);
+      path.setAttribute('stroke', '#6366f1');
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('stroke-dasharray', '6,3');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('pointer-events', 'none');
+      svg.appendChild(path);
+    }
+    // Highlight valid target ports
+    canvas.querySelectorAll('.port-in').forEach(p => {
+      p.classList.toggle('port-target', p.dataset.node != connectingFrom.nodeId);
+    });
+  }
+  if (!connectingFrom) {
+    const old = svg.querySelector('#conn-temp');
+    if (old) old.remove();
+    canvas.querySelectorAll('.port-target').forEach(p => p.classList.remove('port-target'));
   }
 });
 
@@ -657,6 +695,10 @@ window.addEventListener('mouseup', e => {
   isPanning      = false;
   connectingFrom = null;
   canvasWrap.style.cursor = 'default';
+  // Clean up temp line and highlights
+  const old = svg.querySelector('#conn-temp');
+  if (old) old.remove();
+  canvas.querySelectorAll('.port-target').forEach(p => p.classList.remove('port-target'));
 });
 
 canvasWrap.addEventListener('wheel', e => {
@@ -820,6 +862,11 @@ document.getElementById('btn-delete-node').addEventListener('click', () => {
 
 // ── Save ─────────────────────────────────────────────────────────
 document.getElementById('btn-save').addEventListener('click', function () {
+  // Auto-apply any open inspector changes before saving
+  if (selectedNodeId) {
+    document.getElementById('btn-apply-inspector').click();
+  }
+
   const spinner = document.getElementById('save-spinner');
   this.disabled = true;
   spinner.classList.remove('d-none');
@@ -919,3 +966,4 @@ Api.get(BASE + '/flows/' + FLOW_ID + '/data').then(res => {
 })();
 </script>
 <?php \Core\View::endSection() ?>
+

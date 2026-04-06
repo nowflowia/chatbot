@@ -93,53 +93,55 @@ class Flow extends Model
     {
         $db = Database::getInstance();
 
-        $db->delete("DELETE FROM flow_connections WHERE flow_id = ?", [$flowId]);
-        $db->delete("DELETE FROM flow_nodes      WHERE flow_id = ?", [$flowId]);
+        $db->transaction(function ($db) use ($flowId, $nodes, $connections) {
+            $db->delete("DELETE FROM flow_connections WHERE flow_id = ?", [$flowId]);
+            $db->delete("DELETE FROM flow_nodes      WHERE flow_id = ?", [$flowId]);
 
-        $nodeIdMap = []; // temp_id => real db id
+            $nodeIdMap = []; // temp_id => real db id
 
-        foreach ($nodes as $n) {
-            $config   = isset($n['config']) ? json_encode($n['config'], JSON_UNESCAPED_UNICODE) : null;
-            $realId   = $db->insert(
-                "INSERT INTO flow_nodes (flow_id, type, title, config_json, pos_x, pos_y, is_start, status, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
-                [
-                    $flowId,
-                    $n['type']    ?? 'message',
-                    $n['title']   ?? 'Bloco',
-                    $config,
-                    (int)($n['pos_x'] ?? 100),
-                    (int)($n['pos_y'] ?? 100),
-                    (int)($n['is_start'] ?? 0),
-                    now(), now(),
-                ]
+            foreach ($nodes as $n) {
+                $config = isset($n['config']) ? json_encode($n['config'], JSON_UNESCAPED_UNICODE) : null;
+                $realId = $db->insert(
+                    "INSERT INTO flow_nodes (flow_id, type, title, config_json, pos_x, pos_y, is_start, status, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
+                    [
+                        $flowId,
+                        $n['type']    ?? 'message',
+                        $n['title']   ?? 'Bloco',
+                        $config,
+                        (int)($n['pos_x'] ?? 100),
+                        (int)($n['pos_y'] ?? 100),
+                        (int)($n['is_start'] ?? 0),
+                        now(), now(),
+                    ]
+                );
+                $nodeIdMap[$n['id']] = (int)$realId;
+            }
+
+            foreach ($connections as $i => $c) {
+                $src = $nodeIdMap[$c['source_node_id']] ?? null;
+                $tgt = $nodeIdMap[$c['target_node_id']] ?? null;
+                if (!$src || !$tgt) continue;
+
+                $db->insert(
+                    "INSERT INTO flow_connections (flow_id, source_node_id, target_node_id, source_port, target_port, label, condition_value, sort_order, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    [
+                        $flowId, $src, $tgt,
+                        $c['source_port']      ?? 'output',
+                        $c['target_port']      ?? 'input',
+                        $c['label']            ?? null,
+                        $c['condition_value']  ?? null,
+                        (int)($c['sort_order'] ?? $i),
+                        now(), now(),
+                    ]
+                );
+            }
+
+            $db->update(
+                "UPDATE flows SET updated_at = ? WHERE id = ?",
+                [now(), $flowId]
             );
-            $nodeIdMap[$n['id']] = (int)$realId;
-        }
-
-        foreach ($connections as $i => $c) {
-            $src = $nodeIdMap[$c['source_node_id']] ?? null;
-            $tgt = $nodeIdMap[$c['target_node_id']] ?? null;
-            if (!$src || !$tgt) continue;
-
-            $db->insert(
-                "INSERT INTO flow_connections (flow_id, source_node_id, target_node_id, source_port, target_port, label, condition_value, sort_order, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                [
-                    $flowId, $src, $tgt,
-                    $c['source_port']      ?? 'output',
-                    $c['target_port']      ?? 'input',
-                    $c['label']            ?? null,
-                    $c['condition_value']  ?? null,
-                    (int)($c['sort_order'] ?? $i),
-                    now(), now(),
-                ]
-            );
-        }
-
-        $db->update(
-            "UPDATE flows SET updated_at = ? WHERE id = ?",
-            [now(), $flowId]
-        );
+        });
     }
 }

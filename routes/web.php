@@ -77,4 +77,50 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     $router->post('/flows/{id}/delete', ['App\Controllers\FlowController', 'destroy']);
     $router->post('/flows/{id}/save-builder', ['App\Controllers\FlowController', 'saveBuilder']);
     $router->get('/flows/{id}/data', ['App\Controllers\FlowController', 'getBuilderData']);
+
+    // ── CRM (feature: crm) ───────────────────────────────────────────
+    // Settings (static) — MUST come before dynamic routes
+    $router->get('/crm/settings', ['App\Controllers\CrmSettingsController', 'index'])->middleware('feature:crm');
+    $router->post('/crm/settings/pipelines', ['App\Controllers\CrmSettingsController', 'storePipeline'])->middleware('feature:crm');
+    $router->post('/crm/settings/stages/reorder', ['App\Controllers\CrmSettingsController', 'reorderStages'])->middleware('feature:crm');
+    $router->post('/crm/settings/stages', ['App\Controllers\CrmSettingsController', 'storeStage'])->middleware('feature:crm');
+    $router->post('/crm/settings/pipelines/{id}/delete', ['App\Controllers\CrmSettingsController', 'destroyPipeline'])->middleware('feature:crm');
+    $router->post('/crm/settings/pipelines/{id}', ['App\Controllers\CrmSettingsController', 'updatePipeline'])->middleware('feature:crm');
+    $router->post('/crm/settings/stages/{id}/delete', ['App\Controllers\CrmSettingsController', 'destroyStage'])->middleware('feature:crm');
+    $router->post('/crm/settings/stages/{id}', ['App\Controllers\CrmSettingsController', 'updateStage'])->middleware('feature:crm');
+
+    // Companies
+    $router->get('/crm/companies', ['App\Controllers\CrmCompanyController', 'index'])->middleware('feature:crm');
+    $router->post('/crm/companies', ['App\Controllers\CrmCompanyController', 'store'])->middleware('feature:crm');
+    $router->get('/crm/companies/{id}', ['App\Controllers\CrmCompanyController', 'show'])->middleware('feature:crm');
+    $router->post('/crm/companies/{id}/delete', ['App\Controllers\CrmCompanyController', 'destroy'])->middleware('feature:crm');
+    $router->post('/crm/companies/{id}', ['App\Controllers\CrmCompanyController', 'update'])->middleware('feature:crm');
+
+    // Contacts
+    $router->get('/crm/contacts', ['App\Controllers\CrmContactController', 'index'])->middleware('feature:crm');
+    $router->post('/crm/contacts', ['App\Controllers\CrmContactController', 'store'])->middleware('feature:crm');
+    $router->post('/crm/contacts/{id}/delete', ['App\Controllers\CrmContactController', 'destroy'])->middleware('feature:crm');
+    $router->post('/crm/contacts/{id}', ['App\Controllers\CrmContactController', 'update'])->middleware('feature:crm');
+
+    // Tasks
+    $router->post('/crm/tasks', ['App\Controllers\CrmTaskController', 'store'])->middleware('feature:crm');
+    $router->post('/crm/tasks/{id}/done', ['App\Controllers\CrmTaskController', 'done'])->middleware('feature:crm');
+    $router->post('/crm/tasks/{id}/delete', ['App\Controllers\CrmTaskController', 'destroy'])->middleware('feature:crm');
+    $router->post('/crm/tasks/{id}', ['App\Controllers\CrmTaskController', 'update'])->middleware('feature:crm');
+
+    // Deals — static before dynamic
+    $router->post('/crm/deals', ['App\Controllers\CrmDealController', 'store'])->middleware('feature:crm');
+    $router->post('/crm/deals/{id}/move', ['App\Controllers\CrmDealController', 'moveStage'])->middleware('feature:crm');
+    $router->post('/crm/deals/{id}/win', ['App\Controllers\CrmDealController', 'win'])->middleware('feature:crm');
+    $router->post('/crm/deals/{id}/lose', ['App\Controllers\CrmDealController', 'lose'])->middleware('feature:crm');
+    $router->post('/crm/deals/{id}/notes', ['App\Controllers\CrmDealController', 'addNote'])->middleware('feature:crm');
+    $router->post('/crm/deals/{id}/files', ['App\Controllers\CrmDealController', 'uploadFile'])->middleware('feature:crm');
+    $router->post('/crm/deals/{id}/files/{fileId}/delete', ['App\Controllers\CrmDealController', 'deleteFile'])->middleware('feature:crm');
+    $router->post('/crm/deals/{id}/delete', ['App\Controllers\CrmDealController', 'destroy'])->middleware('feature:crm');
+    $router->post('/crm/deals/{id}', ['App\Controllers\CrmDealController', 'update'])->middleware('feature:crm');
+    $router->get('/crm/deals/{id}', ['App\Controllers\CrmDealController', 'show'])->middleware('feature:crm');
+
+    // CRM board & main
+    $router->get('/crm/board/{pipelineId}', ['App\Controllers\CrmController', 'board'])->middleware('feature:crm');
+    $router->get('/crm', ['App\Controllers\CrmController', 'index'])->middleware('feature:crm');
 });

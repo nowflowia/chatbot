@@ -148,9 +148,16 @@ class Router
     private function runMiddleware(string $class, Request $request): void
     {
         $middlewareMap = [
-            'auth'  => \App\Middlewares\AuthMiddleware::class,
-            'guest' => \App\Middlewares\GuestMiddleware::class,
+            'auth'    => \App\Middlewares\AuthMiddleware::class,
+            'guest'   => \App\Middlewares\GuestMiddleware::class,
+            'feature' => \App\Middlewares\FeatureMiddleware::class,
         ];
+
+        // Support "name:param" syntax (e.g. "feature:crm")
+        $param = null;
+        if (str_contains($class, ':')) {
+            [$class, $param] = explode(':', $class, 2);
+        }
 
         $fqcn = $middlewareMap[$class] ?? $class;
 
@@ -158,7 +165,8 @@ class Router
             throw new \RuntimeException("Middleware not found: {$fqcn}");
         }
 
-        (new $fqcn())->handle($request);
+        $instance = $param !== null ? new $fqcn($param) : new $fqcn();
+        $instance->handle($request);
     }
 
     private function runAction(array|callable|string $action, Request $request, array $params): void
