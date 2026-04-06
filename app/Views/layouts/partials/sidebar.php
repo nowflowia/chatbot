@@ -77,18 +77,14 @@ $avatarBg     = $avatarColors[ord(($authUser['name'] ?? 'U')[0]) % count($avatar
           <span class="link-label">Logs Webhook</span>
         </a>
       </li>
+      <?php if (\Core\Auth::isAdmin()): ?>
       <li>
         <a href="<?= url('admin/settings') ?>" class="nav-link<?= isActive('settings') ?>">
           <i class="bi bi-gear-fill"></i>
           <span class="link-label">Configurações</span>
         </a>
       </li>
-      <li>
-        <a href="<?= url('admin/system-update') ?>" class="nav-link<?= isActive('system-update') ?>">
-          <i class="bi bi-cloud-arrow-down-fill"></i>
-          <span class="link-label">Atualização</span>
-        </a>
-      </li>
+      <?php endif; ?>
     </ul>
 
   </div><!-- /sidebar-nav -->

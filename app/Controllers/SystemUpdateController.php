@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use Core\Controller;
 use Core\Request;
+use Core\Auth;
 
 class SystemUpdateController extends Controller
 {
@@ -16,23 +17,30 @@ class SystemUpdateController extends Controller
     }
 
     // ---------------------------------------------------------------
-    // GET /admin/system-update
+    // GET /admin/system-update  (kept for direct URL — redirects to settings tab)
     // ---------------------------------------------------------------
     public function index(Request $request): string
+    {
+        if (!Auth::isAdmin()) {
+            return $this->redirect(url('admin/dashboard'));
+        }
+        return $this->redirect(url('admin/settings?tab=atualizacao'));
+    }
+
+    /**
+     * Build update data array — shared with SettingsController.
+     */
+    public function buildData(): array
     {
         $root        = $this->projectRoot();
         $gitBin      = $this->findGit();
         $gitVersion  = $this->gitVersion($root);
         $hasRepo     = is_dir($root . '/.git');
         $execEnabled = $this->run('echo ok') === 'ok';
+        $localVersion= $this->readVersionJson($root);
+        $lastCommit  = $hasRepo && $gitBin ? $this->lastCommit($root) : [];
 
-        // Current version from version.json
-        $localVersion = $this->readVersionJson($root);
-
-        // Current commit from local git (if available)
-        $lastCommit = $hasRepo && $gitBin ? $this->lastCommit($root) : [];
-
-        return $this->view('system/update', [
+        return [
             'gitVersion'   => $gitVersion,
             'lastCommit'   => $lastCommit,
             'gitAvailable' => ($gitVersion !== null && $hasRepo),
@@ -41,7 +49,7 @@ class SystemUpdateController extends Controller
             'execEnabled'  => $execEnabled,
             'localVersion' => $localVersion,
             'gitPathHint'  => env('GIT_PATH', ''),
-        ]);
+        ];
     }
 
     // ---------------------------------------------------------------
@@ -50,6 +58,7 @@ class SystemUpdateController extends Controller
     public function pull(Request $request): void
     {
         $this->requireAjax();
+        if (!Auth::isAdmin()) { $this->jsonError('Acesso negado.', [], 403); }
 
         $root = $this->projectRoot();
 
@@ -85,6 +94,7 @@ class SystemUpdateController extends Controller
     public function status(Request $request): void
     {
         $this->requireAjax();
+        if (!Auth::isAdmin()) { $this->jsonError('Acesso negado.', [], 403); }
 
         $root   = $this->projectRoot();
         $gitBin = $this->findGit();

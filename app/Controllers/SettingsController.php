@@ -5,6 +5,7 @@ namespace App\Controllers;
 use Core\Controller;
 use Core\Request;
 use Core\Validator;
+use Core\Auth;
 use App\Models\WhatsappSetting;
 use App\Models\MailSetting;
 use App\Models\CompanySetting;
@@ -15,11 +16,25 @@ class SettingsController extends Controller
 {
     public function index(Request $request): string
     {
+        if (!Auth::isAdmin()) {
+            $this->redirect(url('admin/dashboard'));
+        }
+
         $settings        = WhatsappSetting::getActive();
         $mailSettings    = MailSetting::get();
         $companySettings = CompanySetting::get();
         $webhookUrl      = url('webhook');
-        $tab             = $request->get('tab', 'empresa');
+        $tab = $request->get('tab', 'empresa');
+
+        // Redirect non-admins away from the update tab
+        if ($tab === 'atualizacao' && !Auth::isAdmin()) {
+            $tab = 'empresa';
+        }
+
+        $updateData = [];
+        if ($tab === 'atualizacao' && Auth::isAdmin()) {
+            $updateData = (new SystemUpdateController())->buildData();
+        }
 
         return $this->view('settings/index', [
             'settings'        => $settings,
@@ -27,6 +42,7 @@ class SettingsController extends Controller
             'companySettings' => $companySettings,
             'webhookUrl'      => $webhookUrl,
             'activeTab'       => $tab,
+            'updateData'      => $updateData,
         ]);
     }
 
@@ -34,6 +50,7 @@ class SettingsController extends Controller
 
     public function store(Request $request): void
     {
+        if (!Auth::isAdmin()) { $this->jsonError('Acesso negado.', [], 403); }
         if (!$request->isAjax()) {
             $this->redirect(url('admin/settings'));
         }
@@ -66,6 +83,7 @@ class SettingsController extends Controller
 
     public function test(Request $request): void
     {
+        if (!Auth::isAdmin()) { $this->jsonError('Acesso negado.', [], 403); }
         if (!$request->isAjax()) {
             $this->redirect(url('admin/settings'));
         }
@@ -91,6 +109,7 @@ class SettingsController extends Controller
 
     public function storeCompany(Request $request): void
     {
+        if (!Auth::isAdmin()) { $this->jsonError('Acesso negado.', [], 403); }
         if (!$request->isAjax()) {
             $this->redirect(url('admin/settings?tab=empresa'));
         }
@@ -145,6 +164,7 @@ class SettingsController extends Controller
 
     public function storeTemplate(Request $request): void
     {
+        if (!Auth::isAdmin()) { $this->jsonError('Acesso negado.', [], 403); }
         if (!$request->isAjax()) {
             $this->redirect(url('admin/settings?tab=template'));
         }
@@ -165,6 +185,7 @@ class SettingsController extends Controller
 
     public function storeMail(Request $request): void
     {
+        if (!Auth::isAdmin()) { $this->jsonError('Acesso negado.', [], 403); }
         if (!$request->isAjax()) {
             $this->redirect(url('admin/settings?tab=smtp'));
         }
@@ -193,6 +214,7 @@ class SettingsController extends Controller
 
     public function testMail(Request $request): void
     {
+        if (!Auth::isAdmin()) { $this->jsonError('Acesso negado.', [], 403); }
         $to = trim($request->post('test_email', ''));
         if (!$to || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
             $this->jsonError('Informe um e-mail válido para o teste.');

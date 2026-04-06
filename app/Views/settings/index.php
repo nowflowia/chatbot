@@ -40,6 +40,14 @@ $tab = $activeTab ?? 'empresa';
       <i class="bi bi-envelope-fill text-primary"></i> E-mail / SMTP
     </a>
   </li>
+  <?php if (\Core\Auth::isAdmin()): ?>
+  <li class="nav-item ms-auto">
+    <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'atualizacao' ? 'active' : '' ?>"
+       href="<?= url('admin/settings?tab=atualizacao') ?>">
+      <i class="bi bi-cloud-arrow-down-fill text-info"></i> Atualização
+    </a>
+  </li>
+  <?php endif; ?>
 </ul>
 
 
@@ -642,6 +650,200 @@ $tab = $activeTab ?? 'empresa';
 </div>
 </div><!-- /tab-smtp -->
 
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: Atualização (admin only)
+═══════════════════════════════════════════════════════════ -->
+<?php if (\Core\Auth::isAdmin()): ?>
+<div id="tab-atualizacao" <?= $tab !== 'atualizacao' ? 'style="display:none"' : '' ?>>
+<?php
+$ud = $updateData ?? [];
+$gitAvailable  = $ud['gitAvailable']  ?? false;
+$gitVersion    = $ud['gitVersion']    ?? null;
+$gitBin        = $ud['gitBin']        ?? null;
+$hasRepo       = $ud['hasRepo']       ?? false;
+$execEnabled   = $ud['execEnabled']   ?? false;
+$lastCommit    = $ud['lastCommit']    ?? [];
+$localVersion  = $ud['localVersion']  ?? [];
+$gitPathHint   = $ud['gitPathHint']   ?? '';
+?>
+
+<div class="mb-4">
+  <h5 class="fw-bold mb-0">Atualização do Sistema</h5>
+  <small class="text-muted">Verifique e aplique atualizações direto do repositório</small>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+
+    <!-- Version comparison -->
+    <div class="card mb-4">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span class="fw-semibold d-flex align-items-center gap-2">
+          <i class="bi bi-layers text-primary"></i> Versões
+        </span>
+        <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2"
+                id="btn-check" onclick="checkUpdateStatus()">
+          <i class="bi bi-arrow-clockwise" id="check-icon"></i> Verificar
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="bg-light rounded p-3">
+              <div class="text-muted small fw-semibold mb-2"><i class="bi bi-hdd me-1"></i> Versão Instalada</div>
+              <?php if (!empty($lastCommit['hash'])): ?>
+              <code class="text-primary fw-bold" id="upd-local-hash"><?= e($lastCommit['hash']) ?></code>
+              <div class="text-dark small mt-1" id="upd-local-subject"><?= e($lastCommit['subject'] ?? '') ?></div>
+              <div class="text-muted mt-1" style="font-size:.72rem;">
+                <i class="bi bi-person me-1"></i><span id="upd-local-author"><?= e($lastCommit['author'] ?? '') ?></span>
+                &nbsp;·&nbsp;<span id="upd-local-date"><?= e($lastCommit['date'] ?? '') ?></span>
+              </div>
+              <?php elseif (!empty($localVersion['version'])): ?>
+              <div class="fw-bold text-primary" id="upd-local-hash">v<?= e($localVersion['version']) ?></div>
+              <div class="text-muted small mt-1" id="upd-local-subject"><?= e($localVersion['changelog'] ?? '') ?></div>
+              <div class="text-muted small mt-1" id="upd-local-date"><?= e($localVersion['released_at'] ?? '') ?></div>
+              <?php else: ?>
+              <div class="text-muted small" id="upd-local-hash">Desconhecida</div>
+              <?php endif; ?>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="bg-light rounded p-3">
+              <div class="text-muted small fw-semibold mb-2"><i class="bi bi-github me-1"></i> Versão no Repositório</div>
+              <div id="upd-remote-loading" class="text-muted small">
+                <span class="spinner-border spinner-border-sm me-2"></span>Consultando…
+              </div>
+              <div id="upd-remote-info" style="display:none;">
+                <code class="text-success fw-bold" id="upd-remote-hash">—</code>
+                <div class="text-dark small mt-1" id="upd-remote-subject">—</div>
+                <div class="text-muted mt-1" style="font-size:.72rem;">
+                  <i class="bi bi-person me-1"></i><span id="upd-remote-author">—</span>
+                  &nbsp;·&nbsp;<span id="upd-remote-date">—</span>
+                </div>
+              </div>
+              <div id="upd-remote-error" style="display:none;" class="text-danger small">
+                <i class="bi bi-exclamation-triangle me-1"></i><span id="upd-remote-error-msg"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="upd-status-banner" class="mt-3" style="display:none;">
+          <div id="upd-status-inner" class="alert py-2 small mb-0 d-flex align-items-center gap-2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pull action -->
+    <?php if ($gitAvailable): ?>
+    <div class="card mb-4">
+      <div class="card-header fw-semibold d-flex align-items-center gap-2">
+        <i class="bi bi-cloud-download text-success"></i> Atualizar Sistema
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">
+          Executa <code>git pull origin main</code> no servidor e recarrega a página automaticamente.
+        </p>
+        <div id="upd-pull-alert" class="mb-3" style="display:none;"></div>
+        <div class="d-flex align-items-center gap-3">
+          <button class="btn btn-primary fw-semibold d-flex align-items-center gap-2"
+                  id="btn-upd-pull" onclick="runSystemPull()">
+            <span class="spinner-border spinner-border-sm d-none" id="upd-pull-spinner"></span>
+            <i class="bi bi-cloud-download-fill" id="upd-pull-icon"></i>
+            <span id="upd-pull-text">Atualizar Agora</span>
+          </button>
+          <small class="text-muted">Recomenda-se backup antes de atualizar.</small>
+        </div>
+      </div>
+    </div>
+    <div class="card mb-4" id="upd-output-card" style="display:none;">
+      <div class="card-header bg-dark py-2 px-3 d-flex align-items-center gap-2" style="border-radius:.375rem .375rem 0 0;">
+        <i class="bi bi-terminal-fill text-success small"></i>
+        <span class="text-white small fw-semibold">Saída do Git</span>
+      </div>
+      <div class="card-body p-0">
+        <pre id="upd-git-output" style="margin:0;padding:1rem;background:#1e1e1e;color:#d4d4d4;font-size:.8rem;border-radius:0 0 .375rem .375rem;overflow-x:auto;white-space:pre-wrap;word-break:break-all;"></pre>
+      </div>
+    </div>
+    <?php else: ?>
+    <!-- Diagnostics -->
+    <div class="card mb-4">
+      <div class="card-header fw-semibold d-flex align-items-center gap-2 text-warning">
+        <i class="bi bi-exclamation-triangle"></i> Atualização automática não disponível
+      </div>
+      <div class="card-body d-flex flex-column gap-3">
+        <div class="d-flex align-items-start gap-3 p-3 rounded" style="background:<?= $execEnabled ? '#f0fdf4' : '#fef2f2' ?>">
+          <i class="bi <?= $execEnabled ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger' ?> fs-5 mt-1 flex-shrink-0"></i>
+          <div>
+            <div class="fw-semibold small"><?= $execEnabled ? 'Execução de comandos: OK' : 'Execução de comandos: Bloqueada' ?></div>
+            <?php if (!$execEnabled): ?>
+            <div class="text-muted small mt-1">
+              No cPanel: <strong>Software → Select PHP Version → aba "Options"</strong> → remova <code>shell_exec</code>, <code>exec</code> e <code>proc_open</code> de <code>disable_functions</code>.
+            </div>
+            <?php endif; ?>
+          </div>
+        </div>
+        <div class="d-flex align-items-start gap-3 p-3 rounded" style="background:<?= $gitBin ? '#f0fdf4' : '#fef2f2' ?>">
+          <i class="bi <?= $gitBin ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger' ?> fs-5 mt-1 flex-shrink-0"></i>
+          <div>
+            <div class="fw-semibold small"><?= $gitBin ? 'Git: ' . e($gitBin) : 'Git: não encontrado' ?></div>
+            <?php if (!$gitBin): ?>
+            <div class="text-muted small mt-1">
+              Via SSH: <code>which git</code> — copie o caminho e adicione ao <code>.env</code>:<br>
+              <code>GIT_PATH=/caminho/do/git</code>
+              <?php if ($gitPathHint): ?><br><span class="text-warning">Configurado: <code><?= e($gitPathHint) ?></code> (não acessível pelo PHP)</span><?php endif; ?>
+            </div>
+            <?php endif; ?>
+          </div>
+        </div>
+        <div class="d-flex align-items-start gap-3 p-3 rounded" style="background:<?= $hasRepo ? '#f0fdf4' : '#fef2f2' ?>">
+          <i class="bi <?= $hasRepo ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger' ?> fs-5 mt-1 flex-shrink-0"></i>
+          <div>
+            <div class="fw-semibold small"><?= $hasRepo ? 'Repositório Git: inicializado' : 'Repositório Git: não encontrado' ?></div>
+            <?php if (!$hasRepo): ?>
+            <div class="text-muted small mt-1">
+              Via SSH:<br>
+              <code>cd <?= e(dirname(PUBLIC_PATH)) ?></code><br>
+              <code>git init && git remote add origin https://github.com/nowflowia/chatbot.git</code><br>
+              <code>git fetch && git reset --hard origin/main</code>
+            </div>
+            <?php endif; ?>
+          </div>
+        </div>
+        <div class="p-3 bg-light rounded">
+          <div class="fw-semibold small mb-1"><i class="bi bi-terminal me-1"></i> Atualização manual via SSH</div>
+          <pre class="mb-1" style="font-size:.8rem;background:transparent;">cd <?= e(dirname(PUBLIC_PATH)) ?>
+
+git pull origin main</pre>
+          <div class="text-muted small">Se der erro de branch: <code>git branch --set-upstream-to=origin/main main && git pull</code></div>
+        </div>
+      </div>
+    </div>
+    <?php endif; ?>
+
+  </div>
+
+  <!-- Environment info -->
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header fw-semibold d-flex align-items-center gap-2">
+        <i class="bi bi-info-circle text-info"></i> Ambiente
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-borderless mb-0 small">
+          <tbody>
+            <tr><td class="text-muted ps-3">PHP</td><td class="fw-semibold"><?= phpversion() ?></td></tr>
+            <tr><td class="text-muted ps-3">Servidor</td><td class="fw-semibold"><?= e(preg_replace('/\/.+/', '', $_SERVER['SERVER_SOFTWARE'] ?? 'N/A')) ?></td></tr>
+            <tr><td class="text-muted ps-3">Git</td><td class="fw-semibold"><?= e($gitVersion ?? 'Não disponível') ?></td></tr>
+            <tr><td class="text-muted ps-3">Repositório</td><td><?= $hasRepo ? '<span class="text-success fw-semibold">OK</span>' : '<span class="text-danger fw-semibold">Não init.</span>' ?></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /tab-atualizacao -->
+<?php endif; ?>
+
 <?php \Core\View::endSection() ?>
 
 <?php \Core\View::section('scripts') ?>
@@ -936,4 +1138,138 @@ window.copyWebhook = copyWebhook;
 
 })();
 </script>
+
+<?php if (\Core\Auth::isAdmin()): ?>
+<style>@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }</style>
+<script>
+(function () {
+const UPD_CSRF  = '<?= csrf_token() ?>';
+const UPD_URLS  = {
+  status: '<?= url('admin/system-update/status') ?>',
+  pull:   '<?= url('admin/system-update/pull') ?>',
+};
+
+// Auto-check when tab is active
+document.addEventListener('DOMContentLoaded', function () {
+  if (document.getElementById('tab-atualizacao') &&
+      document.getElementById('tab-atualizacao').style.display !== 'none') {
+    checkUpdateStatus();
+  }
+});
+
+window.checkUpdateStatus = function () {
+  const btn  = document.getElementById('btn-check');
+  const icon = document.getElementById('check-icon');
+  if (btn)  btn.disabled = true;
+  if (icon) icon.style.animation = 'spin 1s linear infinite';
+  updShowRemoteLoading();
+  updHideBanner();
+
+  const fd = new FormData();
+  fd.append('_csrf_token', UPD_CSRF);
+  fetch(UPD_URLS.status, { method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'} })
+    .then(r => r.json())
+    .then(res => {
+      if (btn)  btn.disabled = false;
+      if (icon) icon.style.animation = '';
+      if (!res.success) { updShowRemoteError(res.message || 'Erro ao verificar.'); return; }
+      const d = res.data;
+      updShowRemoteCommit(d.remote_commit, d.remote_hash);
+      updUpdateLocal(d.last_commit, d.local_hash);
+      if (d.up_to_date) {
+        updShowBanner('success', '<i class="bi bi-check-circle-fill"></i> Sistema atualizado — você está na versão mais recente.');
+      } else {
+        const n = d.pending || '';
+        updShowBanner('warning', '<i class="bi bi-arrow-up-circle-fill"></i> ' + (n ? n + ' commit(s) disponível(is).' : 'Nova versão disponível.'));
+      }
+    })
+    .catch(() => {
+      if (btn)  btn.disabled = false;
+      if (icon) icon.style.animation = '';
+      updShowRemoteError('Não foi possível consultar o GitHub.');
+    });
+};
+
+window.runSystemPull = function () {
+  const btn   = document.getElementById('btn-upd-pull');
+  const spin  = document.getElementById('upd-pull-spinner');
+  const icon  = document.getElementById('upd-pull-icon');
+  const txt   = document.getElementById('upd-pull-text');
+  const alert = document.getElementById('upd-pull-alert');
+  const outCard = document.getElementById('upd-output-card');
+  const output  = document.getElementById('upd-git-output');
+
+  btn.disabled = true; spin.classList.remove('d-none');
+  icon.style.display = 'none'; txt.textContent = 'Atualizando…';
+  alert.style.display = 'none';
+
+  const fd = new FormData();
+  fd.append('_csrf_token', UPD_CSRF);
+  fetch(UPD_URLS.pull, { method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'} })
+    .then(r => r.json())
+    .then(res => {
+      btn.disabled = false; spin.classList.add('d-none');
+      icon.style.display = ''; txt.textContent = 'Atualizar Agora';
+      if (res.data?.output) { output.textContent = res.data.output; outCard.style.display = ''; }
+      alert.style.display = '';
+      if (res.success) {
+        alert.innerHTML = '<div class="alert alert-success py-2 small d-flex gap-2"><i class="bi bi-check-circle-fill text-success mt-1"></i><span>' + res.message + ' Recarregando em 3 segundos…</span></div>';
+        updUpdateLocal(res.data?.last_commit, '');
+        updShowBanner('success', '<i class="bi bi-check-circle-fill"></i> ' + res.message);
+        setTimeout(() => location.reload(), 3000);
+      } else {
+        alert.innerHTML = '<div class="alert alert-danger py-2 small d-flex gap-2"><i class="bi bi-exclamation-triangle-fill mt-1"></i><span>' + res.message + '</span></div>';
+      }
+    })
+    .catch(() => {
+      btn.disabled = false; spin.classList.add('d-none');
+      icon.style.display = ''; txt.textContent = 'Atualizar Agora';
+      alert.style.display = '';
+      alert.innerHTML = '<div class="alert alert-danger py-2 small">Erro de conexão.</div>';
+    });
+};
+
+function updShowRemoteLoading() {
+  g('upd-remote-loading').style.display = '';
+  g('upd-remote-info').style.display    = 'none';
+  g('upd-remote-error').style.display   = 'none';
+}
+function updShowRemoteCommit(c, hash) {
+  g('upd-remote-loading').style.display = 'none';
+  g('upd-remote-info').style.display    = '';
+  g('upd-remote-error').style.display   = 'none';
+  g('upd-remote-hash').textContent    = hash || (c?.sha||'').substring(0,7) || '—';
+  g('upd-remote-subject').textContent = c?.message || '—';
+  g('upd-remote-author').textContent  = c?.author  || '—';
+  g('upd-remote-date').textContent    = c?.date ? new Date(c.date).toLocaleDateString('pt-BR') : '—';
+}
+function updShowRemoteError(msg) {
+  g('upd-remote-loading').style.display = 'none';
+  g('upd-remote-info').style.display    = 'none';
+  g('upd-remote-error').style.display   = '';
+  g('upd-remote-error-msg').textContent = msg;
+}
+function updUpdateLocal(commit, hash) {
+  if (!commit) return;
+  const h = g('upd-local-hash');
+  const s = g('upd-local-subject');
+  const a = g('upd-local-author');
+  const d = g('upd-local-date');
+  if (h) h.textContent = commit.hash    || hash || '—';
+  if (s) s.textContent = commit.subject || commit.changelog || '—';
+  if (a) a.textContent = commit.author  || '—';
+  if (d) d.textContent = commit.date    || commit.released_at || '—';
+}
+function updShowBanner(type, html) {
+  const b = g('upd-status-banner'); const i = g('upd-status-inner');
+  if (!b||!i) return;
+  i.className = 'alert py-2 small mb-0 d-flex align-items-center gap-2 alert-' + type;
+  i.innerHTML = html; b.style.display = '';
+}
+function updHideBanner() { const b = g('upd-status-banner'); if (b) b.style.display = 'none'; }
+function g(id) { return document.getElementById(id); }
+})();
+</script>
+<?php endif; ?>
+
 <?php \Core\View::endSection() ?>
