@@ -207,4 +207,26 @@ class UserController extends Controller
     }
 
     // ---------------------------------------------------------------
+    // POST /admin/users/refresh-license  — force refresh license cache
+    // ---------------------------------------------------------------
+    public function refreshLicense(Request $request): void
+    {
+        $this->requireAjax();
+        LicenseService::clearCache();
+        $license     = LicenseService::check();
+        $maxUsers    = ($license['valid'] && ($license['max_users'] ?? 0) > 0 && $license['max_users'] < PHP_INT_MAX)
+                       ? (int)$license['max_users'] : null;
+        $activeCount = User::countActive();
+
+        $this->jsonSuccess('Licença atualizada com sucesso.', [
+            'valid'       => $license['valid'],
+            'plan'        => $license['plan']       ?? '',
+            'max_users'   => $maxUsers,
+            'active_count'=> $activeCount,
+            'expires_at'  => $license['expires_at'] ?? null,
+            'status'      => $license['status']     ?? '',
+        ]);
+    }
+
+    // ---------------------------------------------------------------
 }

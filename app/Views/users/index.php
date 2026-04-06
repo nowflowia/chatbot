@@ -13,10 +13,10 @@
   <div class="d-flex align-items-center gap-3">
     <?php if ($maxUsers !== null): ?>
     <?php $pct = min(100, round($activeCount / $maxUsers * 100)); ?>
-    <div style="min-width:200px;">
+    <div style="min-width:200px;" id="license-counter">
       <div class="d-flex justify-content-between mb-1 small">
         <span class="text-muted fw-semibold">Usuários ativos</span>
-        <span class="fw-bold <?= $atLimit ? 'text-danger' : 'text-success' ?>">
+        <span class="fw-bold license-count <?= $atLimit ? 'text-danger' : 'text-success' ?>">
           <?= $activeCount ?> / <?= $maxUsers ?>
         </span>
       </div>
@@ -25,14 +25,18 @@
              style="width:<?= $pct ?>%"></div>
       </div>
       <?php if ($atLimit): ?>
-      <div class="text-danger small mt-1"><i class="bi bi-exclamation-triangle me-1"></i>Limite atingido</div>
+      <div class="license-sub text-danger small mt-1"><i class="bi bi-exclamation-triangle me-1"></i>Limite atingido</div>
       <?php else: ?>
-      <div class="text-muted small mt-1"><?= $maxUsers - $activeCount ?> vaga(s) disponível(is)</div>
+      <div class="license-sub text-muted small mt-1"><?= $maxUsers - $activeCount ?> vaga(s) disponível(is)</div>
       <?php endif; ?>
     </div>
     <?php endif; ?>
+    <button class="btn btn-outline-secondary d-flex align-items-center gap-2"
+            onclick="refreshLicense()" id="btn-refresh-license" title="Consultar API e atualizar limites da licença">
+      <i class="bi bi-arrow-clockwise" id="refresh-icon"></i> Atualizar Licença
+    </button>
     <button class="btn btn-primary d-flex align-items-center gap-2"
-            onclick="openCreateModal()"
+            onclick="openCreateModal()" id="btn-new-user"
             <?= $atLimit ? 'disabled title="Limite de usuários atingido"' : '' ?>>
       <i class="bi bi-person-plus-fill"></i> Novo Usuário
     </button>
@@ -40,7 +44,7 @@
 </div>
 
 <?php if ($atLimit): ?>
-<div class="alert alert-danger d-flex align-items-center gap-2 mb-4 small">
+<div id="license-alert-banner" class="alert alert-danger d-flex align-items-center gap-2 mb-4 small">
   <i class="bi bi-shield-lock-fill fs-5"></i>
   <div>
     <strong>Limite de licença atingido.</strong>
@@ -275,13 +279,17 @@
 <?php \Core\View::endSection() ?>
 
 <?php \Core\View::section('scripts') ?>
+<style>
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+</style>
 <script>
 const URLS = {
-  store:  '<?= url('admin/users') ?>',
-  show:   '<?= url('admin/users') ?>/',
-  update: '<?= url('admin/users') ?>/',
-  delete: '<?= url('admin/users') ?>/',
-  invite: '<?= url('admin/users') ?>/',
+  store:          '<?= url('admin/users') ?>',
+  show:           '<?= url('admin/users') ?>/',
+  update:         '<?= url('admin/users') ?>/',
+  delete:         '<?= url('admin/users') ?>/',
+  invite:         '<?= url('admin/users') ?>/',
+  refreshLicense: '<?= url('admin/users/refresh-license') ?>',
 };
 
 let userModal, deleteModal, currentDeleteId;
@@ -436,6 +444,79 @@ function resendInvite(id, name) {
     .then(r => r.json())
     .then(res => Toast.show(res.message, res.success ? 'success' : 'error'))
     .catch(() => Toast.show('Erro de conexão.', 'error'));
+}
+
+// ---- Refresh License ----
+function refreshLicense() {
+  const btn  = document.getElementById('btn-refresh-license');
+  const icon = document.getElementById('refresh-icon');
+  btn.disabled = true;
+  icon.style.animation = 'spin 1s linear infinite';
+  icon.style.display = 'inline-block';
+
+  const fd = new FormData();
+  fd.append('_csrf_token', '<?= csrf_token() ?>');
+
+  fetch(URLS.refreshLicense, {
+    method: 'POST',
+    body: fd,
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+    .then(r => r.json())
+    .then(res => {
+      btn.disabled = false;
+      icon.style.animation = '';
+
+      if (!res.success) {
+        Toast.show(res.message || 'Erro ao atualizar licença.', 'error');
+        return;
+      }
+
+      const d = res.data;
+      Toast.show('Licença atualizada.', 'success');
+
+      // Update counter display
+      const maxUsers    = d.max_users;
+      const activeCount = d.active_count;
+      const atLimit     = maxUsers !== null && activeCount >= maxUsers;
+
+      // Update button state
+      const btnNew = document.getElementById('btn-new-user');
+      if (btnNew) {
+        btnNew.disabled = atLimit;
+        btnNew.title    = atLimit ? 'Limite de usuários atingido' : '';
+      }
+
+      // Update counter block
+      const counterBlock = document.getElementById('license-counter');
+      if (counterBlock && maxUsers) {
+        const pct     = Math.min(100, Math.round(activeCount / maxUsers * 100));
+        const color   = atLimit ? 'bg-danger' : (pct >= 80 ? 'bg-warning' : 'bg-success');
+        const txtColor= atLimit ? 'text-danger' : 'text-success';
+        const vagas   = maxUsers - activeCount;
+        counterBlock.querySelector('.license-count').textContent = activeCount + ' / ' + maxUsers;
+        counterBlock.querySelector('.license-count').className   = 'fw-bold license-count ' + txtColor;
+        counterBlock.querySelector('.progress-bar').style.width  = pct + '%';
+        counterBlock.querySelector('.progress-bar').className    = 'progress-bar ' + color;
+        const sub = counterBlock.querySelector('.license-sub');
+        if (atLimit) {
+          sub.className   = 'text-danger small mt-1';
+          sub.innerHTML   = '<i class="bi bi-exclamation-triangle me-1"></i>Limite atingido';
+        } else {
+          sub.className   = 'text-muted small mt-1';
+          sub.textContent = vagas + ' vaga(s) disponível(is)';
+        }
+
+        // Show/hide alert banner
+        const banner = document.getElementById('license-alert-banner');
+        if (banner) banner.style.display = atLimit ? '' : 'none';
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      icon.style.animation = '';
+      Toast.show('Erro de conexão.', 'error');
+    });
 }
 
 // ---- Helpers ----
