@@ -41,6 +41,11 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     $router->post('/settings/mail/test', ['App\Controllers\SettingsController', 'testMail']);
     $router->post('/settings/mail', ['App\Controllers\SettingsController', 'storeMail']);
 
+    // System update
+    $router->get('/system-update', ['App\Controllers\SystemUpdateController', 'index']);
+    $router->post('/system-update/status', ['App\Controllers\SystemUpdateController', 'status']);
+    $router->post('/system-update/pull',   ['App\Controllers\SystemUpdateController', 'pull']);
+
     // Chat — static routes MUST come before dynamic {id} routes
     $router->get('/chat', ['App\Controllers\ChatController', 'index']);
     $router->get('/chat/list/active', ['App\Controllers\ChatController', 'getActiveChats']);
