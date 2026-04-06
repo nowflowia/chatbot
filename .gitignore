@@ -40,5 +40,6 @@ Thumbs.db
 #arquivos de configuração e licença
 public_api/
 public_owner/
+!public_owner/verify.php
 
 .claude/
