@@ -25,11 +25,11 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     // Users
     $router->get('/users', ['App\Controllers\UserController', 'index']);
     $router->post('/users', ['App\Controllers\UserController', 'store']);
+    $router->post('/users/refresh-license', ['App\Controllers\UserController', 'refreshLicense']); // static before {id}
     $router->get('/users/{id}', ['App\Controllers\UserController', 'show']);
     $router->post('/users/{id}', ['App\Controllers\UserController', 'update']);
     $router->post('/users/{id}/delete', ['App\Controllers\UserController', 'destroy']);
     $router->post('/users/{id}/invite', ['App\Controllers\UserController', 'resendInvite']);
-    $router->post('/users/refresh-license', ['App\Controllers\UserController', 'refreshLicense']);
 
     // Settings
     $router->get('/settings', ['App\Controllers\SettingsController', 'index']);
