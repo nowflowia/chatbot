@@ -62,7 +62,7 @@ class SystemUpdateController extends Controller
             $this->jsonError('Git não está disponível. Defina GIT_PATH no arquivo .env com o caminho completo do git.', [], 500);
         }
 
-        $g   = escapeshellarg($gitBin) . ' -C ' . escapeshellarg($root);
+        $g   = $this->gitCmd($gitBin, $root);
         $out = $this->run("$g pull --ff-only origin " . self::GITHUB_BRANCH);
         $out = trim($out ?? '');
 
@@ -93,7 +93,7 @@ class SystemUpdateController extends Controller
         // Local commit hash
         $localHash = '';
         if ($hasRepo && $gitBin) {
-            $g = escapeshellarg($gitBin) . ' -C ' . escapeshellarg($root);
+            $g = $this->gitCmd($gitBin, $root);
             $this->run("$g fetch --quiet origin " . self::GITHUB_BRANCH);
             $localHash = trim($this->run("$g rev-parse HEAD") ?? '');
         } else {
@@ -116,7 +116,7 @@ class SystemUpdateController extends Controller
         // Count pending commits if local git available
         $pending = 0;
         if ($hasRepo && $gitBin && !$upToDate && $localHash && $remoteHash) {
-            $g       = escapeshellarg($gitBin) . ' -C ' . escapeshellarg($root);
+            $g       = $this->gitCmd($gitBin, $root);
             $count   = trim($this->run("$g rev-list HEAD..@{u} --count") ?? '0');
             $pending = (int)$count;
         }
@@ -191,12 +191,23 @@ class SystemUpdateController extends Controller
         return null;
     }
 
+    /**
+     * Build git command prefix with safe.directory to avoid
+     * "dubious ownership" errors on cPanel/shared hosting.
+     */
+    private function gitCmd(string $gitBin, string $root): string
+    {
+        return escapeshellarg($gitBin)
+             . ' -c safe.directory=' . escapeshellarg($root)
+             . ' -C ' . escapeshellarg($root);
+    }
+
     private function gitVersion(string $root): ?string
     {
         $git = $this->findGit();
         if (!$git || !is_dir($root . '/.git')) return null;
         $v = $this->run(escapeshellarg($git) . ' --version');
-        return ($v && !str_contains($v, 'not found')) ? trim($v) : null;
+        return ($v && !str_contains($v, 'not found') && !str_contains($v, 'fatal')) ? trim($v) : null;
     }
 
     private function lastCommit(string $root): array
@@ -204,11 +215,11 @@ class SystemUpdateController extends Controller
         $git = $this->findGit();
         if (!$git || !is_dir($root . '/.git')) return [];
         $log = $this->run(
-            escapeshellarg($git) . ' -C ' . escapeshellarg($root) .
-            ' log -1 --format="%h|%s|%an|%ar"'
+            $this->gitCmd($git, $root) . ' log -1 --format="%h|%s|%an|%ar"'
         );
-        if (!$log || str_contains($log, 'fatal')) return [];
+        if (!$log || str_contains($log, 'fatal') || str_contains($log, 'error')) return [];
         $parts = explode('|', trim($log), 4);
+        if (empty($parts[0]) || strlen($parts[0]) < 4) return [];
         return [
             'hash'    => $parts[0] ?? '',
             'subject' => $parts[1] ?? '',

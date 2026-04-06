@@ -365,6 +365,107 @@ A licença define os limites do plano contratado (número de usuários, fluxos, 
 
 ---
 
+## Troubleshooting
+
+### Atualização pelo painel
+
+#### `fatal: detected dubious ownership in repository`
+
+O processo PHP roda com um usuário diferente do dono dos arquivos (comum em cPanel/LiteSpeed). O sistema já passa `-c safe.directory` automaticamente. Se o erro persistir, execute via SSH:
+
+```bash
+git config --global --add safe.directory /home/usuario/public_html
+```
+
+Substitua `/home/usuario/public_html` pelo diretório exibido no erro.
+
+---
+
+#### `Git não disponível` / Git não encontrado
+
+1. Via SSH, descubra o caminho do git:
+
+```bash
+which git
+```
+
+2. Adicione ao `.env` da instalação:
+
+```env
+GIT_PATH=/usr/local/cpanel/3rdparty/bin/git
+```
+
+3. Caminhos comuns no cPanel:
+   - `/usr/local/cpanel/3rdparty/bin/git`
+   - `/opt/cpanel/ea-git/root/usr/bin/git`
+   - `/usr/bin/git`
+
+---
+
+#### `shell_exec` / `exec` desabilitados
+
+No cPanel: **Software → Select PHP Version → aba "Options"** → remova `shell_exec`, `exec` e `proc_open` do campo `disable_functions`.
+
+---
+
+#### `fatal: no commit on branch 'master' yet` ao fazer git pull
+
+O repositório foi inicializado localmente mas ainda não tem commits. Execute:
+
+```bash
+git pull origin main
+git checkout -b main --track origin/main
+```
+
+A partir daí `git pull` simples funcionará.
+
+---
+
+#### `There is no tracking information for the current branch`
+
+O branch local não está rastreando o remoto. Resolva com:
+
+```bash
+git branch --set-upstream-to=origin/main main
+# ou se o branch local ainda for 'master':
+git pull origin main
+git checkout -b main --track origin/main
+```
+
+---
+
+#### Versão instalada mostra `fatal:` na página de Atualização
+
+Indica que o git retornou erro ao consultar o log local. Causas comuns:
+- Branch sem commits (`git pull origin main` resolve)
+- Permissão negada (`safe.directory` — ver acima)
+- Git não encontrado (`GIT_PATH` no `.env` — ver acima)
+
+---
+
+### Login
+
+#### `Erro de conexão` ao fazer login (cPanel/LiteSpeed)
+
+Alguns servidores cPanel removem o header `X-Requested-With`. O sistema já trata isso automaticamente. Se o problema persistir, verifique se há algum plugin de cache ou WAF interceptando as requisições.
+
+---
+
+### Instalador
+
+#### `ERR_TOO_MANY_REDIRECTS` ao acessar `/install/`
+
+O DocumentRoot não está apontando para a pasta `public/`. Corrija no cPanel em **Domains → Document Root** para que aponte para `public_html/public` (ou o equivalente na sua estrutura).
+
+#### `storage/` sem permissão de escrita
+
+```bash
+chmod -R 775 storage
+chmod -R 775 public/assets/uploads
+```
+
+---
+
 ## Segurança
 
 - Nunca versione o arquivo `.env`
