@@ -10,9 +10,11 @@ Plataforma completa de atendimento via WhatsApp com fluxos automatizados, fila d
 - **Fluxos automatizados** — builder visual com drag-and-drop, 8+ tipos de nós
 - **WhatsApp Business API** — envio e recebimento de texto, imagem, vídeo, áudio, documento, GIF e localização
 - **Painel web responsivo** — Dashboard, atendimento em tempo real, relatórios
+- **CRM Kanban** *(módulo licenciado)* — pipeline de negociações, empresas, contatos, tarefas e histórico de atividades
+- **REST API** *(módulo licenciado)* — integração com apps externos via API key, documentação Swagger-like embutida
 - **Configurações SMTP** — envio de convites e redefinição de senha por e-mail
 - **Identidade visual** — logo, ícone/favicon e CSS personalizado por instalação
-- **Licenciamento** — controle de usuários e fluxos por domínio via API externa
+- **Licenciamento** — controle de usuários, fluxos e módulos por domínio via API externa
 - **Instalador web** — configuração guiada similar ao WordPress (`/install/`)
 
 ---
@@ -329,8 +331,11 @@ No painel, acesse **Configurações → E-mail / SMTP** e preencha:
 ```
 /
 ├── app/
-│   ├── Controllers/     # Controladores HTTP
-│   ├── Models/          # Models (PDO)
+│   ├── Controllers/
+│   │   └── Api/         # Controllers da REST API externa
+│   ├── Middlewares/     # Auth, CSRF, Feature flag, API key
+│   ├── Models/
+│   │   └── Crm/         # Models do módulo CRM
 │   ├── Services/        # Serviços (WhatsApp, Mail, License, etc.)
 │   └── Views/           # Templates PHP
 ├── bootstrap/           # Bootstrap da aplicação
@@ -339,10 +344,15 @@ No painel, acesse **Configurações → E-mail / SMTP** e preencha:
 ├── database/
 │   └── migrations/      # Migrations versionadas
 ├── install/             # Instalador web (desativado após uso)
-├── public/              # Document root (index.php, assets)
-├── routes/              # Definição de rotas
+├── public/              # Document root principal (index.php, assets)
+├── public_api/          # Document root da API externa (subdomínio dedicado)
+├── routes/
+│   ├── web.php          # Rotas do painel web
+│   ├── api.php          # Webhook + rotas API no domínio principal
+│   └── api_v1.php       # Rotas REST v1 para public_api/
 ├── storage/
 │   ├── cache/
+│   ├── crm/             # Arquivos anexados a negociações CRM
 │   └── logs/
 └── .env                 # Variáveis de ambiente (não versionado)
 ```
@@ -361,7 +371,140 @@ Após a compra você receberá uma **Chave de Licença** que deve ser informada 
 LICENSE_KEY=sua-chave-aqui
 ```
 
-A licença define os limites do plano contratado (número de usuários, fluxos, etc.) e é verificada automaticamente pelo sistema.
+A licença define os limites do plano contratado (número de usuários, fluxos e módulos extras) e é verificada automaticamente pelo sistema.
+
+### Módulos opcionais (licenciados por plano)
+
+Alguns módulos são habilitados conforme o plano contratado. Eles só aparecem no painel quando a licença autoriza o acesso.
+
+| Módulo | Feature flag | Descrição |
+|--------|-------------|-----------|
+| **CRM** | `crm` | Pipeline kanban, empresas, contatos e tarefas |
+| **API REST** | `api` | Integração externa com apps via API key |
+
+#### Como habilitar um módulo na licença
+
+No **Owner Panel** (painel do distribuidor):
+
+1. Acesse **Planos** e edite o plano desejado
+2. Marque os módulos que o plano deve incluir (ex: ✅ CRM, ✅ API)
+3. Salve — todas as licenças vinculadas a esse plano passam a ter acesso automaticamente
+4. Se a licença já existia, o cliente deve aguardar até **1 hora** para o cache expirar, ou o administrador pode forçar a renovação via SSH:
+
+```sql
+DELETE FROM license_cache WHERE cache_key = 'license_data';
+```
+
+> Os módulos são controlados pelo campo `features` da licença. Uma licença pode ter módulos extras além dos do plano — basta editá-la individualmente no Owner Panel.
+
+---
+
+## REST API
+
+O módulo de API permite integrar o sistema com aplicativos externos (mobile, web, integrações).
+
+> **Requer** a feature `api` habilitada na licença do plano.
+
+### URLs de acesso
+
+| Modo | URL |
+|------|-----|
+| Interno (padrão) | `https://chat.seudominio.com.br/api/v1/` |
+| Externo (subdomínio dedicado) | `https://api.seudominio.com.br/v1/` |
+
+Para usar o subdomínio dedicado:
+
+1. Crie um Virtual Host / subdomínio apontando o Document Root para a pasta `public_api/` do projeto
+2. Adicione ao `.env`:
+
+```env
+API_BASE_URL=https://api.seudominio.com.br/v1
+API_CORS_ORIGINS=*
+```
+
+### Configuração do servidor (subdomínio dedicado)
+
+**Apache:**
+
+```apache
+<VirtualHost *:443>
+    ServerName api.seudominio.com.br
+    DocumentRoot /var/www/chatbot/public_api
+
+    <Directory /var/www/chatbot/public_api>
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    SSLEngine on
+    # ... certificado SSL
+</VirtualHost>
+```
+
+**Nginx:**
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name api.seudominio.com.br;
+    root /var/www/chatbot/public_api;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\. { deny all; }
+}
+```
+
+**cPanel (subdomínio):**
+
+1. Crie um subdomínio `api.seudominio.com.br`
+2. Configure o **Document Root** para `public_html/public_api` (ou o equivalente na sua estrutura)
+
+### Autenticação
+
+Todas as requisições protegidas exigem uma **API key** no header:
+
+```
+Authorization: Bearer SUA_API_KEY
+```
+
+ou:
+
+```
+X-API-Key: SUA_API_KEY
+```
+
+As API keys são geradas em **Configurações → API** no painel administrativo.
+
+### Endpoints disponíveis
+
+| Método | Endpoint | Auth | Descrição |
+|--------|----------|------|-----------|
+| `POST` | `/v1/auth/login` | — | Autenticar e obter API key |
+| `GET` | `/v1/auth/me` | ✅ | Dados do usuário autenticado |
+| `GET` | `/v1/chats` | ✅ | Listar atendimentos |
+| `GET` | `/v1/chats/{id}` | ✅ | Detalhe de um atendimento |
+| `GET` | `/v1/chats/{id}/messages` | ✅ | Mensagens de um atendimento |
+| `POST` | `/v1/chats/{id}/messages` | ✅ | Enviar mensagem |
+| `POST` | `/v1/chats/{id}/assign` | ✅ | Atribuir atendente |
+| `POST` | `/v1/chats/{id}/finish` | ✅ | Finalizar atendimento |
+| `GET` | `/v1/contacts` | ✅ | Listar contatos |
+| `GET` | `/v1/contacts/{id}` | ✅ | Detalhe de um contato |
+
+A documentação interativa completa (Swagger-like) está disponível em:
+
+```
+https://chat.seudominio.com.br/admin/api-docs
+```
 
 ---
 
