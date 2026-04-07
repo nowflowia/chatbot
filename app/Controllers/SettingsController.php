@@ -36,6 +36,15 @@ class SettingsController extends Controller
             $updateData = (new SystemUpdateController())->buildData();
         }
 
+        // API Keys for current user
+        $apiKeys = [];
+        try {
+            $apiKeys = \Core\Database::getInstance()->select(
+                "SELECT * FROM api_keys WHERE user_id=? ORDER BY id DESC",
+                [(int)Auth::id()]
+            );
+        } catch (\Throwable $e) {}
+
         return $this->view('settings/index', [
             'settings'        => $settings,
             'mailSettings'    => $mailSettings,
@@ -43,6 +52,7 @@ class SettingsController extends Controller
             'webhookUrl'      => $webhookUrl,
             'activeTab'       => $tab,
             'updateData'      => $updateData,
+            'apiKeys'         => $apiKeys,
         ]);
     }
 

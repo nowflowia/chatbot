@@ -78,6 +78,14 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     $router->post('/flows/{id}/save-builder', ['App\Controllers\FlowController', 'saveBuilder']);
     $router->get('/flows/{id}/data', ['App\Controllers\FlowController', 'getBuilderData']);
 
+    // API Keys (settings tab)
+    $router->post('/settings/api-keys',             ['App\Controllers\ApiKeyController', 'store']);
+    $router->post('/settings/api-keys/{id}/toggle', ['App\Controllers\ApiKeyController', 'toggle']);
+    $router->post('/settings/api-keys/{id}/delete', ['App\Controllers\ApiKeyController', 'destroy']);
+
+    // API Documentation
+    $router->get('/api-docs', ['App\Controllers\ApiDocsController', 'index']);
+
     // ── CRM (feature: crm) ───────────────────────────────────────────
     // Settings (static) — MUST come before dynamic routes
     $router->get('/crm/settings', ['App\Controllers\CrmSettingsController', 'index'])->middleware('feature:crm');

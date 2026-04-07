@@ -51,6 +51,12 @@ $adminOpen = isGroupOpen(['users', 'webhook-logs', 'settings']);
           <span class="link-label">Dashboard</span>
         </a>
       </li>
+      <li>
+        <a href="<?= url('admin/api-docs') ?>" class="nav-link<?= isActive('api-docs') ?>">
+          <i class="bi bi-file-code"></i>
+          <span class="link-label">API Docs</span>
+        </a>
+      </li>
     </ul>
 
     <!-- ── Chat ────────────────────────────────── -->

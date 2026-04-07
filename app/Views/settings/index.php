@@ -40,6 +40,12 @@ $tab = $activeTab ?? 'empresa';
       <i class="bi bi-envelope-fill text-primary"></i> E-mail / SMTP
     </a>
   </li>
+  <li class="nav-item">
+    <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'api' ? 'active' : '' ?>"
+       href="<?= url('admin/settings?tab=api') ?>">
+      <i class="bi bi-key-fill text-danger"></i> API
+    </a>
+  </li>
   <?php if (\Core\Auth::isAdmin()): ?>
   <li class="nav-item ms-auto">
     <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'atualizacao' ? 'active' : '' ?>"
@@ -844,6 +850,120 @@ git pull origin main</pre>
 </div><!-- /tab-atualizacao -->
 <?php endif; ?>
 
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: API
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-api" <?= $tab !== 'api' ? 'style="display:none"' : '' ?>>
+<?php $csrf = \Core\CSRF::token(); ?>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card mb-4">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-key-fill text-danger"></i>
+        <span class="fw-semibold">Suas chaves de API</span>
+        <a href="<?= url('admin/api-docs') ?>" class="btn btn-sm btn-outline-primary ms-auto" target="_blank">
+          <i class="bi bi-book me-1"></i>Documentação
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <?php if (empty($apiKeys)): ?>
+        <p class="text-muted p-3 mb-0">Nenhuma chave criada ainda.</p>
+        <?php else: ?>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0" id="api-keys-table">
+            <thead class="table-light"><tr>
+              <th>Nome</th><th>Chave</th><th>Último uso</th><th>Expira</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody>
+            <?php foreach ($apiKeys as $ak): ?>
+            <tr id="apikey-row-<?= $ak['id'] ?>">
+              <td class="small fw-semibold"><?= e($ak['name']) ?></td>
+              <td>
+                <div class="input-group input-group-sm" style="max-width:240px">
+                  <input type="password" class="form-control font-monospace"
+                         value="<?= e($ak['key']) ?>" id="apikey-<?= $ak['id'] ?>" readonly style="font-size:.72rem">
+                  <button class="btn btn-outline-secondary" type="button"
+                          onclick="toggleApiKey(<?= $ak['id'] ?>)" title="Mostrar/ocultar">
+                    <i class="bi bi-eye" id="eye-<?= $ak['id'] ?>"></i>
+                  </button>
+                  <button class="btn btn-outline-secondary" type="button"
+                          onclick="copyApiKey(<?= $ak['id'] ?>)" title="Copiar">
+                    <i class="bi bi-clipboard" id="clip-<?= $ak['id'] ?>"></i>
+                  </button>
+                </div>
+              </td>
+              <td class="small text-muted"><?= $ak['last_used_at'] ? date('d/m/Y H:i', strtotime($ak['last_used_at'])) : 'Nunca' ?></td>
+              <td class="small"><?= $ak['expires_at'] ? date('d/m/Y', strtotime($ak['expires_at'])) : '∞' ?></td>
+              <td>
+                <span class="badge <?= $ak['is_active'] ? 'text-bg-success' : 'text-bg-secondary' ?>" id="apikey-badge-<?= $ak['id'] ?>">
+                  <?= $ak['is_active'] ? 'Ativa' : 'Inativa' ?>
+                </span>
+              </td>
+              <td class="text-end pe-2" style="white-space:nowrap">
+                <button class="btn btn-sm btn-outline-warning" onclick="toggleKeyStatus(<?= $ak['id'] ?>)" title="Ativar/desativar">
+                  <i class="bi bi-toggle-<?= $ak['is_active'] ? 'on' : 'off' ?>" id="toggle-icon-<?= $ak['id'] ?>"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteApiKey(<?= $ak['id'] ?>)" title="Remover">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>
+            <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header fw-semibold"><i class="bi bi-plus-circle me-2"></i>Nova chave de API</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-7">
+            <label class="form-label form-label-sm fw-semibold">Nome <span class="text-danger">*</span></label>
+            <input type="text" id="apikey-name" class="form-control form-control-sm"
+                   placeholder="Ex: App Mobile, Integração Zapier…">
+          </div>
+          <div class="col-md-5">
+            <label class="form-label form-label-sm fw-semibold">Expiração (opcional)</label>
+            <input type="date" id="apikey-expires" class="form-control form-control-sm">
+          </div>
+        </div>
+        <button class="btn btn-danger btn-sm mt-3" id="btn-create-apikey">
+          <i class="bi bi-key me-1"></i>Gerar chave
+        </button>
+        <div id="apikey-result" class="mt-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header fw-semibold"><i class="bi bi-info-circle me-2 text-primary"></i>Como usar</div>
+      <div class="card-body small">
+        <p class="mb-2 fw-semibold">Autenticação via header:</p>
+        <div class="bg-dark text-light rounded p-2 font-monospace mb-3" style="font-size:.75rem;word-break:break-all;">
+          Authorization: Bearer <span class="text-warning">{sua_chave}</span>
+        </div>
+        <p class="mb-2 fw-semibold">Ou via header alternativo:</p>
+        <div class="bg-dark text-light rounded p-2 font-monospace mb-3" style="font-size:.75rem;word-break:break-all;">
+          X-API-Key: <span class="text-warning">{sua_chave}</span>
+        </div>
+        <p class="mb-1 fw-semibold">Base URL:</p>
+        <div class="bg-dark text-light rounded p-2 font-monospace mb-3" style="font-size:.75rem;word-break:break-all;">
+          <?= rtrim(url('api/v1'), '/') ?>
+        </div>
+        <a href="<?= url('admin/api-docs') ?>" class="btn btn-outline-primary btn-sm w-100" target="_blank">
+          <i class="bi bi-book me-1"></i>Ver documentação completa
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /tab-api -->
+
 <?php \Core\View::endSection() ?>
 
 <?php \Core\View::section('scripts') ?>
@@ -1271,5 +1391,84 @@ function g(id) { return document.getElementById(id); }
 })();
 </script>
 <?php endif; ?>
+
+<script>
+// ── API Keys ───────────────────────────────────────────────────
+var API_CSRF = '<?= \Core\CSRF::token() ?>';
+var API_BASE = '<?= url('admin') ?>';
+
+function toggleApiKey(id) {
+  var el  = document.getElementById('apikey-' + id);
+  var eye = document.getElementById('eye-' + id);
+  if (el.type === 'password') { el.type = 'text'; eye.className = 'bi bi-eye-slash'; }
+  else { el.type = 'password'; eye.className = 'bi bi-eye'; }
+}
+
+function copyApiKey(id) {
+  var el   = document.getElementById('apikey-' + id);
+  var clip = document.getElementById('clip-' + id);
+  navigator.clipboard.writeText(el.value).then(function () {
+    clip.className = 'bi bi-check2 text-success';
+    setTimeout(function () { clip.className = 'bi bi-clipboard'; }, 2000);
+  });
+}
+
+function toggleKeyStatus(id) {
+  fetch(API_BASE + '/settings/api-keys/' + id + '/toggle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': API_CSRF },
+    body: JSON.stringify({ _token: API_CSRF })
+  }).then(r => r.json()).then(res => {
+    if (!res.success) { alert(res.message); return; }
+    var badge  = document.getElementById('apikey-badge-' + id);
+    var icon   = document.getElementById('toggle-icon-' + id);
+    if (res.data.is_active) {
+      badge.className = 'badge text-bg-success'; badge.textContent = 'Ativa';
+      icon.className  = 'bi bi-toggle-on';
+    } else {
+      badge.className = 'badge text-bg-secondary'; badge.textContent = 'Inativa';
+      icon.className  = 'bi bi-toggle-off';
+    }
+  });
+}
+
+function deleteApiKey(id) {
+  if (!confirm('Remover esta chave de API? Aplicativos que a usam perderão acesso imediatamente.')) return;
+  fetch(API_BASE + '/settings/api-keys/' + id + '/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': API_CSRF },
+    body: JSON.stringify({ _token: API_CSRF })
+  }).then(r => r.json()).then(res => {
+    if (res.success) { document.getElementById('apikey-row-' + id)?.remove(); }
+    else alert(res.message);
+  });
+}
+
+document.getElementById('btn-create-apikey')?.addEventListener('click', function () {
+  var name    = document.getElementById('apikey-name').value.trim();
+  var expires = document.getElementById('apikey-expires').value;
+  var result  = document.getElementById('apikey-result');
+  if (!name) { result.innerHTML = '<div class="alert alert-danger py-2 small">Informe um nome para a chave.</div>'; return; }
+  this.disabled = true;
+  fetch(API_BASE + '/settings/api-keys', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': API_CSRF },
+    body: JSON.stringify({ name: name, expires_at: expires || null, _token: API_CSRF })
+  }).then(r => r.json()).then(res => {
+    this.disabled = false;
+    if (!res.success) { result.innerHTML = '<div class="alert alert-danger py-2 small">' + res.message + '</div>'; return; }
+    var k = res.data.api_key;
+    result.innerHTML = '<div class="alert alert-success py-2 small">'
+      + '<strong>Chave criada! Copie agora — ela não será exibida novamente.</strong><br>'
+      + '<div class="input-group input-group-sm mt-2" style="max-width:420px">'
+      + '<input type="text" class="form-control font-monospace" value="' + k.key + '" id="new-key-val" readonly style="font-size:.72rem">'
+      + '<button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById(\'new-key-val\').value)">'
+      + '<i class="bi bi-clipboard"></i></button></div></div>';
+    document.getElementById('apikey-name').value = '';
+    document.getElementById('apikey-expires').value = '';
+    setTimeout(() => location.reload(), 4000);
+  }).catch(() => { this.disabled = false; });
+});
+</script>
 
 <?php \Core\View::endSection() ?>

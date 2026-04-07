@@ -151,6 +151,7 @@ class Router
             'auth'    => \App\Middlewares\AuthMiddleware::class,
             'guest'   => \App\Middlewares\GuestMiddleware::class,
             'feature' => \App\Middlewares\FeatureMiddleware::class,
+            'api'     => \App\Middlewares\ApiKeyMiddleware::class,
         ];
 
         // Support "name:param" syntax (e.g. "feature:crm")
