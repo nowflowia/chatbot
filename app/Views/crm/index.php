@@ -1,5 +1,5 @@
 <?php \Core\View::section('title') ?>CRM — Negociações<?php \Core\View::endSection() ?>
-<?php \Core\View::section('page-title') ?>CRM — Kanban<?php \Core\View::endSection() ?>
+<?php \Core\View::section('page-title') ?>CRM — Negociações<?php \Core\View::endSection() ?>
 <?php \Core\View::section('content') ?>
 
 <?php
@@ -116,30 +116,30 @@ foreach ($deals as $d) {
   </form>
 </div>
 
-<!-- Kanban board -->
+<!-- Board -->
 <?php if (empty($stages)): ?>
   <div class="alert alert-info">Nenhuma etapa configurada para este pipeline. <a href="<?= $base ?>/crm/settings">Configurar agora</a></div>
 <?php else: ?>
-<div class="kanban-board d-flex gap-3 pb-3" style="overflow-x:auto;min-height:60vh;">
+<div class="crm-board d-flex gap-3 pb-3" style="overflow-x:auto;min-height:60vh;">
   <?php foreach ($stages as $stage): ?>
   <?php
     $stageDeals = $dealsByStage[$stage['id']] ?? [];
     $stageTotal = array_sum(array_column($stageDeals, 'value'));
   ?>
-  <div class="kanban-col flex-shrink-0" style="width:280px;" data-stage-id="<?= $stage['id'] ?>">
+  <div class="crm-col flex-shrink-0" style="width:280px;" data-stage-id="<?= $stage['id'] ?>">
 
     <!-- Column header -->
-    <div class="kanban-col-header d-flex align-items-center gap-2 mb-2 px-1">
-      <span class="kanban-stage-dot" style="background:<?= e($stage['color']) ?>;width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0;"></span>
+    <div class="crm-col-header d-flex align-items-center gap-2 mb-2 px-1">
+      <span class="crm-stage-dot" style="background:<?= e($stage['color']) ?>;width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0;"></span>
       <span class="fw-semibold small flex-grow-1 text-truncate"><?= e($stage['name']) ?></span>
       <span class="badge bg-secondary rounded-pill small"><?= count($stageDeals) ?></span>
     </div>
     <div class="text-muted small px-1 mb-2"><?= $fmt($stageTotal) ?></div>
 
     <!-- Cards container (sortable) -->
-    <div class="kanban-cards" id="stage-<?= $stage['id'] ?>" data-stage-id="<?= $stage['id'] ?>">
+    <div class="crm-cards" id="stage-<?= $stage['id'] ?>" data-stage-id="<?= $stage['id'] ?>">
       <?php foreach ($stageDeals as $deal): ?>
-      <div class="kanban-card card mb-2 shadow-sm" data-deal-id="<?= $deal['id'] ?>" style="cursor:pointer;">
+      <div class="crm-card card mb-2 shadow-sm" data-deal-id="<?= $deal['id'] ?>" style="cursor:pointer;">
         <div class="card-body p-2">
           <a href="<?= $base ?>/crm/deals/<?= $deal['id'] ?>" class="text-decoration-none text-dark stretched-link">
             <div class="fw-semibold small text-truncate"><?= e($deal['title']) ?></div>
@@ -243,12 +243,12 @@ foreach ($deals as $d) {
 </div>
 
 <style>
-.kanban-board { user-select: none; }
-.kanban-col { background: #f8fafc; border-radius: 10px; padding: 12px 8px; }
-.kanban-card { transition: box-shadow .15s; border: 1px solid #e2e8f0; }
-.kanban-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.12) !important; }
-.kanban-card.sortable-ghost { opacity: .4; }
-.kanban-card.sortable-chosen { box-shadow: 0 8px 20px rgba(0,0,0,.15) !important; }
+.crm-board { user-select: none; }
+.crm-col { background: #f8fafc; border-radius: 10px; padding: 12px 8px; }
+.crm-card { transition: box-shadow .15s; border: 1px solid #e2e8f0; }
+.crm-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.12) !important; }
+.crm-card.sortable-ghost { opacity: .4; }
+.crm-card.sortable-chosen { box-shadow: 0 8px 20px rgba(0,0,0,.15) !important; }
 </style>
 
 <?php \Core\View::endSection() ?>
@@ -260,9 +260,9 @@ const CSRF   = '<?= $csrf ?>';
 const STAGES = <?= json_encode($stages) ?>;
 
 /* ── Drag & Drop via SortableJS ─── */
-document.querySelectorAll('.kanban-cards').forEach(el => {
+document.querySelectorAll('.crm-cards').forEach(el => {
   Sortable.create(el, {
-    group: 'kanban',
+    group: 'crm-deals',
     animation: 150,
     ghostClass: 'sortable-ghost',
     chosenClass: 'sortable-chosen',

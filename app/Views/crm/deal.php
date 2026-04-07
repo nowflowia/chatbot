@@ -18,7 +18,7 @@ $status = $statusLabels[$deal['status']] ?? $statusLabels['open'];
 <!-- Breadcrumb + back -->
 <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
   <a href="<?= $base ?>/crm" class="btn btn-sm btn-outline-secondary">
-    <i class="bi bi-arrow-left me-1"></i>Kanban
+    <i class="bi bi-arrow-left me-1"></i>CRM
   </a>
   <h5 class="mb-0 fw-bold text-truncate flex-grow-1"><?= e($deal['title']) ?></h5>
   <span class="badge rounded-pill <?= $status['class'] ?>"><?= $status['label'] ?></span>
