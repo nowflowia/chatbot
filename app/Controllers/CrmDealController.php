@@ -97,7 +97,7 @@ class CrmDealController extends Controller
 
     public function moveStage(Request $request, string $id): void
     {
-        $stageId = (int)$request->get('stage_id');
+        $stageId = (int)$request->input('stage_id');
         if (!$stageId) {
             $this->jsonError('stage_id é obrigatório.');
         }

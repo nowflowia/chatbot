@@ -164,12 +164,6 @@ foreach ($deals as $d) {
       <?php endforeach; ?>
     </div>
 
-    <!-- Add deal shortcut -->
-    <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-1 btn-add-deal"
-            data-stage-id="<?= $stage['id'] ?>" data-stage-name="<?= e($stage['name']) ?>">
-      <i class="bi bi-plus"></i> Adicionar
-    </button>
-
   </div>
   <?php endforeach; ?>
 </div>
@@ -287,15 +281,6 @@ document.querySelectorAll('.kanban-cards').forEach(el => {
         }
       }).catch(() => location.reload());
     }
-  });
-});
-
-/* ── Btn add deal with pre-selected stage ─── */
-document.querySelectorAll('.btn-add-deal').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const sid = btn.dataset.stageId;
-    document.getElementById('deal-stage-select').value = sid;
-    new bootstrap.Modal(document.getElementById('modal-deal')).show();
   });
 });
 
