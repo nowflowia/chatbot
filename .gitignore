@@ -39,6 +39,8 @@ Thumbs.db
 
 #arquivos de configuração e licença
 public_api/
+!public_api/index.php
+!public_api/.htaccess
 public_owner/
 !public_owner/verify.php
 

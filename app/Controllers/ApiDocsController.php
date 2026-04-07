@@ -18,9 +18,14 @@ class ApiDocsController extends Controller
             [(int)$user['id']]
         );
 
+        // External API URL: env API_BASE_URL (e.g. https://api.yourdomain.com/v1)
+        // Fallback to the internal route for backward compatibility
+        $apiBaseUrl = env('API_BASE_URL', '') ?: url('api/v1');
+
         return $this->view('api-docs/index', [
-            'apiKeys' => $apiKeys,
-            'baseUrl' => url('api/v1'),
+            'apiKeys'    => $apiKeys,
+            'baseUrl'    => rtrim($apiBaseUrl, '/'),
+            'internalUrl' => rtrim(url('api/v1'), '/'),
         ]);
     }
 }

@@ -3,7 +3,8 @@
 <?php \Core\View::section('content') ?>
 
 <?php
-$BASE = rtrim($baseUrl, '/');
+$BASE         = rtrim($baseUrl, '/');
+$INTERNAL_URL = rtrim($internalUrl ?? $BASE, '/');
 
 function renderEndpoint(array $ep): void {
     $id      = $ep['id'];
@@ -269,7 +270,19 @@ function renderEndpoint(array $ep): void {
       <div class="api-section-title"><i class="bi bi-book"></i> Introdução</div>
       <div class="card p-4">
         <h6 class="fw-bold mb-2">Base URL</h6>
-        <div class="code-block mb-3"><?= e($BASE) ?></div>
+        <div class="code-block mb-1"><?= e($BASE) ?></div>
+        <?php if ($BASE !== $INTERNAL_URL): ?>
+        <p class="small text-muted mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Também disponível via URL interna: <code><?= e($INTERNAL_URL) ?></code>
+        </p>
+        <?php else: ?>
+        <p class="small text-muted mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Configure <code>API_BASE_URL</code> no <code>.env</code> para usar um subdomínio dedicado
+          (ex: <code>https://api.yourdomain.com/v1</code>)
+        </p>
+        <?php endif; ?>
 
         <h6 class="fw-bold mb-2">Formato das respostas</h6>
         <p class="small text-muted mb-2">Todas as respostas seguem o padrão:</p>
