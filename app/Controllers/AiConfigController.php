@@ -44,7 +44,8 @@ class AiConfigController extends Controller
         $db  = Database::getInstance();
         $tab = $request->get('tab', 'persona');
 
-        $persona = $db->selectOne("SELECT * FROM ai_persona ORDER BY id ASC LIMIT 1") ?: ['prompt' => ''];
+        $persona = $db->selectOne("SELECT * FROM ai_persona ORDER BY id ASC LIMIT 1")
+                   ?: ['prompt' => '', 'style' => 'profissional'];
         $qa      = $db->select("SELECT * FROM ai_knowledge_qa ORDER BY id DESC");
         $docs    = $db->select("SELECT * FROM ai_knowledge_docs ORDER BY id DESC");
         $sites   = $db->select("SELECT * FROM ai_knowledge_sites ORDER BY id DESC");
@@ -55,6 +56,7 @@ class AiConfigController extends Controller
             'qa'        => $qa,
             'docs'      => $docs,
             'sites'     => $sites,
+            'styles'    => AiService::STYLES,
         ]);
     }
 
@@ -64,14 +66,26 @@ class AiConfigController extends Controller
     {
         $this->requireAdmin();
         $prompt = trim((string)$request->post('prompt', ''));
-        $ts     = now();
-        $db     = Database::getInstance();
+        $style  = (string)$request->post('style', 'profissional');
+
+        if (!isset(AiService::STYLES[$style])) {
+            $style = 'profissional';
+        }
+
+        $ts = now();
+        $db = Database::getInstance();
 
         $row = $db->selectOne("SELECT id FROM ai_persona ORDER BY id ASC LIMIT 1");
         if ($row) {
-            $db->update("UPDATE ai_persona SET prompt=?, updated_at=? WHERE id=?", [$prompt, $ts, (int)$row['id']]);
+            $db->update(
+                "UPDATE ai_persona SET prompt=?, style=?, updated_at=? WHERE id=?",
+                [$prompt, $style, $ts, (int)$row['id']]
+            );
         } else {
-            $db->insert("INSERT INTO ai_persona (prompt, created_at, updated_at) VALUES (?, ?, ?)", [$prompt, $ts, $ts]);
+            $db->insert(
+                "INSERT INTO ai_persona (prompt, style, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                [$prompt, $style, $ts, $ts]
+            );
         }
 
         $this->jsonSuccess('Persona salva com sucesso!');

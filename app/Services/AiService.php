@@ -35,6 +35,44 @@ class AiService
     ];
 
     /**
+     * Estilos de resposta selecionáveis na Persona.
+     * Cada item: ['label' => string, 'desc' => string, 'instruction' => string]
+     * `instruction` é injetada no system prompt.
+     */
+    public const STYLES = [
+        'profissional' => [
+            'label'       => 'Profissional',
+            'desc'        => 'tom equilibrado, cordial e objetivo (padrão)',
+            'instruction' => 'Use um tom profissional, equilibrado, cordial e objetivo. Evite gírias.',
+        ],
+        'amigavel' => [
+            'label'       => 'Amigável',
+            'desc'        => 'próximo, caloroso, usa "você" de forma relaxada',
+            'instruction' => 'Use um tom amigável e caloroso, tratando o cliente por "você" de forma natural. Seja acolhedor sem perder a clareza.',
+        ],
+        'divertido' => [
+            'label'       => 'Divertido',
+            'desc'        => 'leve, bem-humorado, com emojis ocasionais',
+            'instruction' => 'Use um tom leve e bem-humorado, com emojis ocasionais (não exagere). Mantenha a clareza da informação.',
+        ],
+        'empatico' => [
+            'label'       => 'Empático',
+            'desc'        => 'acolhedor, valida sentimentos antes de responder',
+            'instruction' => 'Adote um tom empático e acolhedor. Valide os sentimentos do cliente antes de oferecer a solução.',
+        ],
+        'direto' => [
+            'label'       => 'Direto',
+            'desc'        => 'curto e ao ponto, sem rodeios',
+            'instruction' => 'Seja direto e objetivo. Respostas curtas, sem rodeios nem cumprimentos longos.',
+        ],
+        'formal' => [
+            'label'       => 'Formal',
+            'desc'        => 'linguagem culta, tratamento cerimonioso',
+            'instruction' => 'Use linguagem culta, tratamento cerimonioso ("o senhor"/"a senhora"). Mantenha postura formal.',
+        ],
+    ];
+
+    /**
      * Testa a conexão chamando o endpoint /models de cada provedor.
      * Retorna ['ok' => bool, 'message' => string, 'data' => array]
      */
@@ -194,12 +232,17 @@ class AiService
         $parts = [];
 
         // ── Persona ──
-        $persona = $db->selectOne("SELECT prompt FROM ai_persona ORDER BY id ASC LIMIT 1");
+        $persona = $db->selectOne("SELECT prompt, style FROM ai_persona ORDER BY id ASC LIMIT 1");
         if ($persona && !empty($persona['prompt'])) {
             $parts[] = trim((string)$persona['prompt']);
         } else {
             $parts[] = 'Você é um assistente de atendimento. Responda de forma clara e objetiva.';
         }
+
+        // ── Estilo de resposta ──
+        $styleKey = $persona['style'] ?? 'profissional';
+        $style    = self::STYLES[$styleKey] ?? self::STYLES['profissional'];
+        $parts[]  = '## Estilo de resposta' . "\n" . $style['instruction'];
 
         // ── Q&A ──
         $qa = $db->select("SELECT question, answer FROM ai_knowledge_qa WHERE is_active=1 ORDER BY id ASC");

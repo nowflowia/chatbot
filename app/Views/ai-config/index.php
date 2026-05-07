@@ -65,14 +65,31 @@ function fmtSize(int $bytes): string {
       <div class="card-body">
         <form id="persona-form" novalidate>
           <?= csrf_field() ?>
+
+          <?php $currentStyle = $persona['style'] ?? 'profissional'; ?>
+          <div class="mb-3">
+            <label class="form-label">Estilo de resposta</label>
+            <select name="style" class="form-select">
+              <?php foreach ($styles as $key => $st): ?>
+              <option value="<?= e($key) ?>" <?= $currentStyle === $key ? 'selected' : '' ?>>
+                <?= e($st['label']) ?> — <?= e($st['desc']) ?>
+              </option>
+              <?php endforeach; ?>
+            </select>
+            <small class="text-muted">
+              Define o tom de voz aplicado pela IA em todas as respostas.
+            </small>
+          </div>
+
           <div class="mb-3">
             <label class="form-label">Prompt</label>
-            <textarea name="prompt" class="form-control font-monospace" rows="14"
+            <textarea name="prompt" class="form-control font-monospace" rows="12"
                       placeholder="Você é um atendente da empresa X. Responda de forma cordial e objetiva. Sempre que não souber a resposta, diga que vai transferir para um humano…"><?= e($persona['prompt'] ?? '') ?></textarea>
             <small class="text-muted">
               Este texto é usado como <em>system prompt</em> em todas as conversas com a IA.
             </small>
           </div>
+
           <button type="submit" class="btn btn-primary fw-semibold" id="btn-persona-save">
             <span class="spinner-border spinner-border-sm d-none me-2" id="persona-save-spin"></span>
             <i class="bi bi-floppy me-2"></i> Salvar persona
