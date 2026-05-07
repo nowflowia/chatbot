@@ -977,9 +977,9 @@ git pull origin main</pre>
 
   </div>
 
-  <!-- Environment info -->
+  <!-- Environment info + Backup -->
   <div class="col-lg-4">
-    <div class="card">
+    <div class="card mb-3">
       <div class="card-header fw-semibold d-flex align-items-center gap-2">
         <i class="bi bi-info-circle text-info"></i> Ambiente
       </div>
@@ -992,6 +992,29 @@ git pull origin main</pre>
             <tr><td class="text-muted ps-3">Repositório</td><td><?= $hasRepo ? '<span class="text-success fw-semibold">OK</span>' : '<span class="text-danger fw-semibold">Não init.</span>' ?></td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="card border-warning">
+      <div class="card-header fw-semibold d-flex align-items-center gap-2 bg-warning-subtle">
+        <i class="bi bi-shield-exclamation text-warning"></i> Backup
+      </div>
+      <div class="card-body p-3">
+        <div class="alert alert-warning py-2 small mb-3 d-flex gap-2">
+          <i class="bi bi-exclamation-triangle-fill mt-1 flex-shrink-0"></i>
+          <span><strong>Recomendado.</strong> Faça backup antes de atualizar para poder reverter caso algo dê errado.</span>
+        </div>
+        <button class="btn btn-outline-warning btn-sm w-100 mb-2 fw-semibold" id="btn-backup-files">
+          <span class="spinner-border spinner-border-sm d-none me-1" id="bk-files-spin"></span>
+          <i class="bi bi-folder-fill me-1"></i> Backup do diretório (.zip)
+        </button>
+        <button class="btn btn-outline-warning btn-sm w-100 fw-semibold" id="btn-backup-db">
+          <span class="spinner-border spinner-border-sm d-none me-1" id="bk-db-spin"></span>
+          <i class="bi bi-database-fill-down me-1"></i> Backup do banco (.sql)
+        </button>
+        <small class="text-muted d-block mt-2">
+          O download pode demorar conforme o tamanho dos arquivos e do banco.
+        </small>
       </div>
     </div>
   </div>
@@ -1414,8 +1437,10 @@ window.copyWebhook = copyWebhook;
 (function () {
 const UPD_CSRF  = '<?= csrf_token() ?>';
 const UPD_URLS  = {
-  status: '<?= url('admin/system-update/status') ?>',
-  pull:   '<?= url('admin/system-update/pull') ?>',
+  status:      '<?= url('admin/system-update/status') ?>',
+  pull:        '<?= url('admin/system-update/pull') ?>',
+  backupFiles: '<?= url('admin/system-update/backup-files') ?>',
+  backupDb:    '<?= url('admin/system-update/backup-db') ?>',
 };
 
 // Auto-check when tab is active
@@ -1547,6 +1572,34 @@ function updShowBanner(type, html) {
 }
 function updHideBanner() { const b = g('upd-status-banner'); if (b) b.style.display = 'none'; }
 function g(id) { return document.getElementById(id); }
+
+// ── Backup buttons ────────────────────────────────────────────
+function triggerBackup(url, btnId, spinId) {
+  const btn  = g(btnId);
+  const spin = g(spinId);
+  if (!btn) return;
+  btn.disabled = true;
+  spin.classList.remove('d-none');
+
+  // Open as direct download via hidden iframe to avoid leaving the page
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+  document.body.appendChild(iframe);
+
+  // Re-enable button after a short delay (download already started)
+  setTimeout(() => {
+    btn.disabled = false;
+    spin.classList.add('d-none');
+    setTimeout(() => iframe.remove(), 30000);
+  }, 4000);
+}
+g('btn-backup-files')?.addEventListener('click', function () {
+  triggerBackup(UPD_URLS.backupFiles, 'btn-backup-files', 'bk-files-spin');
+});
+g('btn-backup-db')?.addEventListener('click', function () {
+  triggerBackup(UPD_URLS.backupDb, 'btn-backup-db', 'bk-db-spin');
+});
 })();
 </script>
 <?php endif; ?>

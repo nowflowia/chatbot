@@ -103,6 +103,169 @@ class SystemUpdateController extends Controller
     }
 
     // ---------------------------------------------------------------
+    // GET /admin/system-update/backup-files  — download project as .zip
+    // ---------------------------------------------------------------
+    public function backupFiles(Request $request): void
+    {
+        if (!Auth::isAdmin()) {
+            http_response_code(403);
+            echo 'Acesso negado.';
+            return;
+        }
+
+        if (!class_exists('ZipArchive')) {
+            http_response_code(500);
+            echo 'Extensão ZipArchive não disponível neste servidor.';
+            return;
+        }
+
+        @set_time_limit(0);
+        @ini_set('memory_limit', '512M');
+
+        $root    = $this->projectRoot();
+        $tmpFile = tempnam(sys_get_temp_dir(), 'bk_files_') . '.zip';
+        $zip     = new \ZipArchive();
+
+        if ($zip->open($tmpFile, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            http_response_code(500);
+            echo 'Falha ao criar arquivo zip.';
+            return;
+        }
+
+        $excludeDirs = [
+            '.git', 'vendor', 'node_modules',
+            'storage/cache', 'storage/logs',
+            'public/assets/uploads/cache',
+        ];
+
+        $rootLen = strlen($root) + 1;
+        $iter = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($root, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iter as $file) {
+            $absolute = $file->getPathname();
+            $relative = str_replace('\\', '/', substr($absolute, $rootLen));
+
+            // Skip excluded directories
+            $skip = false;
+            foreach ($excludeDirs as $ex) {
+                if ($relative === $ex || str_starts_with($relative, $ex . '/')) {
+                    $skip = true;
+                    break;
+                }
+            }
+            if ($skip) continue;
+
+            if ($file->isDir()) {
+                $zip->addEmptyDir($relative);
+            } elseif ($file->isFile()) {
+                $zip->addFile($absolute, $relative);
+            }
+        }
+
+        $zip->close();
+
+        $filename = 'backup-files-' . date('Y-m-d_His') . '.zip';
+        $this->streamFile($tmpFile, $filename, 'application/zip');
+        @unlink($tmpFile);
+    }
+
+    // ---------------------------------------------------------------
+    // GET /admin/system-update/backup-db  — download MySQL dump
+    // ---------------------------------------------------------------
+    public function backupDb(Request $request): void
+    {
+        if (!Auth::isAdmin()) {
+            http_response_code(403);
+            echo 'Acesso negado.';
+            return;
+        }
+
+        @set_time_limit(0);
+        @ini_set('memory_limit', '512M');
+
+        $tmpFile = tempnam(sys_get_temp_dir(), 'bk_db_') . '.sql';
+        $fp      = fopen($tmpFile, 'w');
+        if (!$fp) {
+            http_response_code(500);
+            echo 'Falha ao abrir arquivo temporário.';
+            return;
+        }
+
+        try {
+            $pdo = \Core\Database::getInstance()->getPdo();
+
+            $dbName = $pdo->query('SELECT DATABASE()')->fetchColumn();
+
+            fwrite($fp, "-- ChatBot DB Backup\n");
+            fwrite($fp, "-- Database: {$dbName}\n");
+            fwrite($fp, '-- Generated: ' . date('Y-m-d H:i:s') . "\n\n");
+            fwrite($fp, "SET FOREIGN_KEY_CHECKS=0;\n");
+            fwrite($fp, "SET NAMES utf8mb4;\n\n");
+
+            $tables = $pdo->query('SHOW TABLES')->fetchAll(\PDO::FETCH_COLUMN);
+
+            foreach ($tables as $table) {
+                fwrite($fp, "\n-- Table: {$table}\n");
+                fwrite($fp, "DROP TABLE IF EXISTS `{$table}`;\n");
+
+                $row    = $pdo->query("SHOW CREATE TABLE `{$table}`")->fetch(\PDO::FETCH_ASSOC);
+                $create = $row['Create Table'] ?? '';
+                fwrite($fp, $create . ";\n\n");
+
+                $stmt = $pdo->query("SELECT * FROM `{$table}`");
+                $cols = null;
+                while ($r = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+                    if ($cols === null) {
+                        $cols = '`' . implode('`,`', array_keys($r)) . '`';
+                    }
+                    $vals = [];
+                    foreach ($r as $v) {
+                        if ($v === null) {
+                            $vals[] = 'NULL';
+                        } elseif (is_int($v) || is_float($v)) {
+                            $vals[] = $v;
+                        } else {
+                            $vals[] = $pdo->quote((string)$v);
+                        }
+                    }
+                    fwrite($fp, "INSERT INTO `{$table}` ({$cols}) VALUES (" . implode(',', $vals) . ");\n");
+                }
+            }
+
+            fwrite($fp, "\nSET FOREIGN_KEY_CHECKS=1;\n");
+        } catch (\Throwable $e) {
+            fclose($fp);
+            @unlink($tmpFile);
+            http_response_code(500);
+            echo 'Erro ao gerar dump: ' . $e->getMessage();
+            return;
+        }
+
+        fclose($fp);
+
+        $filename = 'backup-db-' . date('Y-m-d_His') . '.sql';
+        $this->streamFile($tmpFile, $filename, 'application/sql');
+        @unlink($tmpFile);
+    }
+
+    // ---------------------------------------------------------------
+    private function streamFile(string $path, string $downloadName, string $mime): void
+    {
+        if (ob_get_level()) {
+            @ob_end_clean();
+        }
+        header('Content-Type: ' . $mime);
+        header('Content-Disposition: attachment; filename="' . $downloadName . '"');
+        header('Content-Length: ' . filesize($path));
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+        header('Pragma: no-cache');
+        readfile($path);
+    }
+
+    // ---------------------------------------------------------------
     // Run pending DB migrations directly (no shell exec).
     // Returns ['ran' => int, 'names' => string[], 'error' => ?string]
     // ---------------------------------------------------------------

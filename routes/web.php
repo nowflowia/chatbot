@@ -48,6 +48,8 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     $router->get('/system-update', ['App\Controllers\SystemUpdateController', 'index']);
     $router->post('/system-update/status', ['App\Controllers\SystemUpdateController', 'status']);
     $router->post('/system-update/pull',   ['App\Controllers\SystemUpdateController', 'pull']);
+    $router->get('/system-update/backup-files', ['App\Controllers\SystemUpdateController', 'backupFiles']);
+    $router->get('/system-update/backup-db',    ['App\Controllers\SystemUpdateController', 'backupDb']);
 
     // Chat — static routes MUST come before dynamic {id} routes
     $router->get('/chat', ['App\Controllers\ChatController', 'index']);
