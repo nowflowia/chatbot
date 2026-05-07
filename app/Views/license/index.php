@@ -243,6 +243,25 @@ $cacheValid = $cacheAge !== null && $cacheAge < $cacheTtl;
       </div>
     </div>
 
+    <div class="card border-warning mb-4">
+      <div class="card-header bg-warning-subtle d-flex align-items-center justify-content-between">
+        <span class="fw-semibold d-flex align-items-center gap-2">
+          <i class="bi bi-bug-fill text-warning"></i> Diagnóstico de conexão
+        </span>
+        <button class="btn btn-warning btn-sm fw-semibold" id="btn-probe-api">
+          <span class="spinner-border spinner-border-sm d-none me-1" id="probe-spin"></span>
+          <i class="bi bi-broadcast me-1"></i> Testar API agora
+        </button>
+      </div>
+      <div class="card-body p-3">
+        <p class="small text-muted mb-2">
+          Faz uma chamada raw HTTP à <code>LICENSE_API_URL</code> e mostra status, tempo e corpo da resposta.
+          Útil quando aparece <em>"License API unreachable"</em>.
+        </p>
+        <div id="probe-result"></div>
+      </div>
+    </div>
+
     <div class="card border-info">
       <div class="card-header bg-info-subtle d-flex align-items-center gap-2">
         <i class="bi bi-info-circle-fill text-info"></i> Como funciona
@@ -261,6 +280,79 @@ $cacheValid = $cacheAge !== null && $cacheAge < $cacheTtl;
 
 
 <script>
+// ── Probe API ────────────────────────────────────────────────
+document.getElementById('btn-probe-api')?.addEventListener('click', function () {
+  var btn  = this;
+  var spin = document.getElementById('probe-spin');
+  var box  = document.getElementById('probe-result');
+  btn.disabled = true; spin.classList.remove('d-none');
+  box.innerHTML = '<div class="text-muted small"><i class="bi bi-hourglass-split"></i> Testando…</div>';
+
+  var fd = new FormData();
+  fd.append('_csrf_token', '<?= \Core\CSRF::token() ?>');
+
+  fetch('<?= url('admin/license/probe') ?>', {
+    method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(r => r.json())
+  .then(res => {
+    btn.disabled = false; spin.classList.add('d-none');
+    if (!res.success) {
+      box.innerHTML = '<div class="alert alert-danger py-2 small">' + res.message + '</div>';
+      return;
+    }
+    var d = res.data || {};
+    var statusHtml = '';
+    if (d.error) {
+      statusHtml = '<span class="badge bg-danger">Falhou</span>';
+    } else if (d.code >= 200 && d.code < 300 && d.parsed) {
+      statusHtml = '<span class="badge bg-success">HTTP ' + d.code + ' · JSON OK</span>';
+    } else if (d.code >= 200 && d.code < 300) {
+      statusHtml = '<span class="badge bg-warning">HTTP ' + d.code + ' · resposta não é JSON</span>';
+    } else {
+      statusHtml = '<span class="badge bg-danger">HTTP ' + d.code + '</span>';
+    }
+
+    var html = ''
+      + '<table class="table table-sm small mb-3">'
+      + '<tbody>'
+      +   '<tr><td class="text-muted" style="width:30%">URL chamada</td>'
+      +     '<td class="font-monospace text-break" style="font-size:.72rem">' + escapeHtml(d.url) + '</td></tr>'
+      +   '<tr><td class="text-muted">Status</td><td>' + statusHtml + '</td></tr>'
+      +   '<tr><td class="text-muted">Tempo</td><td>' + d.duration_ms + ' ms</td></tr>';
+    if (d.error) {
+      html += '<tr><td class="text-muted">Erro cURL</td><td class="text-danger fw-semibold">' + escapeHtml(d.error) + '</td></tr>';
+    }
+    html += '</tbody></table>';
+
+    if (d.parsed) {
+      html += '<div class="small fw-semibold mb-1 text-success">'
+            + '<i class="bi bi-check-circle-fill"></i> JSON recebido</div>'
+            + '<pre class="bg-light p-3 rounded mb-0" style="font-size:.74rem;max-height:300px;overflow:auto">'
+            + escapeHtml(JSON.stringify(d.parsed, null, 2)) + '</pre>';
+    } else if (d.body) {
+      html += '<div class="small fw-semibold mb-1 text-warning">'
+            + '<i class="bi bi-exclamation-triangle-fill"></i> Corpo da resposta (não-JSON)</div>'
+            + '<pre class="bg-light p-3 rounded mb-0" style="font-size:.74rem;max-height:300px;overflow:auto">'
+            + escapeHtml(d.body) + '</pre>';
+    } else {
+      html += '<div class="alert alert-danger py-2 small mb-0">'
+            + 'Resposta vazia. Verifique se a URL está acessível pelo servidor (firewall, DNS, SSL).'
+            + '</div>';
+    }
+    box.innerHTML = html;
+  })
+  .catch(function (err) {
+    btn.disabled = false; spin.classList.add('d-none');
+    box.innerHTML = '<div class="alert alert-danger py-2 small">Erro: ' + err + '</div>';
+  });
+});
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+  });
+}
+
 document.getElementById('btn-refresh-license')?.addEventListener('click', function () {
   var btn  = this;
   var spin = document.getElementById('refresh-spin');

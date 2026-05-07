@@ -59,6 +59,28 @@ class LicenseController extends Controller
         }
     }
 
+    public function probe(Request $request): void
+    {
+        $this->requireAdmin();
+        $r       = LicenseService::probeApi();
+        $bodyTxt = $r['body'] !== null ? substr($r['body'], 0, 4000) : null;
+
+        $parsed  = null;
+        if (is_string($r['body'])) {
+            $tmp = json_decode($r['body'], true);
+            if (is_array($tmp)) $parsed = $tmp;
+        }
+
+        $this->jsonSuccess('Diagnóstico concluído.', [
+            'url'         => $r['url'] ?? '',
+            'code'        => (int)($r['code'] ?? 0),
+            'duration_ms' => (int)($r['duration_ms'] ?? 0),
+            'error'       => $r['error'] ?? null,
+            'body'        => $bodyTxt,
+            'parsed'      => $parsed,
+        ]);
+    }
+
     private function maskKey(string $key): string
     {
         if ($key === '') return '';

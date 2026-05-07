@@ -59,6 +59,7 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     // License diagnostics
     $router->get('/license',         ['App\Controllers\LicenseController', 'index']);
     $router->post('/license/refresh',['App\Controllers\LicenseController', 'refresh']);
+    $router->post('/license/probe',  ['App\Controllers\LicenseController', 'probe']);
 
     // System update
     $router->get('/system-update', ['App\Controllers\SystemUpdateController', 'index']);
