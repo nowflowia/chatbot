@@ -154,6 +154,11 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     $router->get('/crm/board/{pipelineId}', ['App\Controllers\CrmController', 'board'])->middleware('feature:crm');
     $router->get('/crm', ['App\Controllers\CrmController', 'index'])->middleware('feature:crm');
 
+    // ── CRM Admin ─────────────────────────────────────────────────
+    $router->get('/crm-admin',                                 ['App\Controllers\CrmAdminController', 'index']);
+    $router->get('/crm-admin/contacts/template',               ['App\Controllers\CrmAdminController', 'contactsTemplate']);
+    $router->post('/crm-admin/contacts/import',                ['App\Controllers\CrmAdminController', 'importContacts']);
+
     // ── WhatsApp Admin ─────────────────────────────────────────────
     $router->get('/whatsapp',                                ['App\Controllers\WhatsAppAdminController', 'index']);
     $router->post('/whatsapp/templates',                     ['App\Controllers\WhatsAppAdminController', 'store']);

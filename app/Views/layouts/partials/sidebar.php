@@ -24,7 +24,7 @@ $avatarBg     = $avatarColors[ord(($authUser['name'] ?? 'U')[0]) % count($avatar
 $chatOpen       = isGroupOpen(['/chat', 'queue', 'flow']);
 $conversasOpen  = isGroupOpen(['/conversations']);
 $crmOpen        = isGroupOpen(['/crm']);
-$adminOpen      = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config', 'license', 'whatsapp']);
+$adminOpen      = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config', 'license', 'whatsapp', 'crm-admin']);
 ?>
 <!-- Sidebar overlay (mobile) -->
 <div id="sidebar-overlay" class="sidebar-overlay"></div>
@@ -172,6 +172,12 @@ $adminOpen      = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config',
           </a>
         </li>
         <?php if (\Core\Auth::isAdmin()): ?>
+        <li>
+          <a href="<?= url('admin/crm-admin') ?>" class="nav-link nav-sub<?= isActive('crm-admin') ?>">
+            <i class="bi bi-person-gear"></i>
+            <span class="link-label">CRM</span>
+          </a>
+        </li>
         <li>
           <a href="<?= url('admin/whatsapp') ?>" class="nav-link nav-sub<?= isActive('/whatsapp') ?>">
             <i class="bi bi-whatsapp text-success"></i>
