@@ -6,6 +6,7 @@ use Core\Controller;
 use Core\Request;
 use Core\Auth;
 use Core\Database;
+use App\Services\AiService;
 
 class AiConfigController extends Controller
 {
@@ -146,17 +147,26 @@ class AiConfigController extends Controller
             $this->jsonError('Falha ao salvar o arquivo. Verifique permissões em storage/ai/docs.');
         }
 
+        $extracted = AiService::extractDocumentText($dest, $file['name']);
+
         $ts = now();
         $id = Database::getInstance()->insert(
-            "INSERT INTO ai_knowledge_docs (original_name, stored_name, mime, size_bytes, is_active, created_at, updated_at)
-             VALUES (?, ?, ?, ?, 1, ?, ?)",
-            [$file['name'], $stored, $mime ?: 'application/octet-stream', (int)$file['size'], $ts, $ts]
+            "INSERT INTO ai_knowledge_docs
+                (original_name, stored_name, mime, size_bytes, extracted_text, is_active, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, 1, ?, ?)",
+            [$file['name'], $stored, $mime ?: 'application/octet-stream', (int)$file['size'], $extracted, $ts, $ts]
         );
 
-        $this->jsonSuccess('Documento enviado!', [
+        $msg = 'Documento enviado!';
+        if ($extracted === '') {
+            $msg .= ' Atenção: não foi possível extrair texto deste arquivo.';
+        }
+
+        $this->jsonSuccess($msg, [
             'id'            => (int)$id,
             'original_name' => $file['name'],
             'size_bytes'    => (int)$file['size'],
+            'has_text'      => $extracted !== '',
         ]);
     }
 
@@ -185,13 +195,21 @@ class AiConfigController extends Controller
             $this->jsonError('URL inválida.', ['url' => ['Informe uma URL completa (https://…).']], 422);
         }
 
-        $ts = now();
+        $content = AiService::fetchSiteContent($url);
+        $ts      = now();
+
         Database::getInstance()->insert(
-            "INSERT INTO ai_knowledge_sites (url, title, is_active, created_at, updated_at) VALUES (?, ?, 1, ?, ?)",
-            [$url, $title ?: null, $ts, $ts]
+            "INSERT INTO ai_knowledge_sites
+                (url, title, content, is_active, last_scraped_at, created_at, updated_at)
+             VALUES (?, ?, ?, 1, ?, ?, ?)",
+            [$url, $title ?: null, $content ?: null, $content ? $ts : null, $ts, $ts]
         );
 
-        $this->jsonSuccess('URL cadastrada!');
+        $msg = 'URL cadastrada!';
+        if ($content === '') {
+            $msg .= ' Atenção: o conteúdo da página não pôde ser baixado.';
+        }
+        $this->jsonSuccess($msg, ['has_content' => $content !== '']);
     }
 
     public function destroySite(Request $request, $id): void
@@ -199,5 +217,30 @@ class AiConfigController extends Controller
         $this->requireAdmin();
         Database::getInstance()->delete("DELETE FROM ai_knowledge_sites WHERE id=?", [(int)$id]);
         $this->jsonSuccess('URL removida.');
+    }
+
+    // ── Test chat ─────────────────────────────────────────────────
+
+    public function testChat(Request $request): void
+    {
+        $this->requireAdmin();
+        $message = trim((string)$request->post('message', ''));
+
+        if ($message === '') {
+            $this->jsonError('Digite uma mensagem para testar.');
+        }
+
+        try {
+            $service = new AiService();
+            $reply   = $service->ask($message);
+
+            if ($reply === '') {
+                $reply = '(Resposta vazia)';
+            }
+
+            $this->jsonSuccess('OK', ['reply' => $reply]);
+        } catch (\Throwable $e) {
+            $this->jsonError($e->getMessage());
+        }
     }
 }

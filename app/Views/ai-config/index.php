@@ -31,6 +31,12 @@ function fmtSize(int $bytes): string {
       <i class="bi bi-globe2 text-info"></i> Site
     </a>
   </li>
+  <li class="nav-item ms-auto">
+    <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'testar' ? 'active' : '' ?>"
+       href="<?= url('admin/ai-config?tab=testar') ?>">
+      <i class="bi bi-chat-dots-fill text-warning"></i> Testar
+    </a>
+  </li>
 </ul>
 
 
@@ -292,6 +298,70 @@ function fmtSize(int $bytes): string {
 </div><!-- /tab-site -->
 
 
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: Testar
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-testar" <?= $tab !== 'testar' ? 'style="display:none"' : '' ?>>
+
+<div class="mb-4">
+  <h5 class="fw-bold mb-0">Testar agente</h5>
+  <small class="text-muted">Conversa de teste usando a Persona, Q&A, Documentos e Sites configurados</small>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-9">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-chat-dots-fill text-warning"></i> Conversa
+      </div>
+      <div class="card-body">
+        <div id="chat-thread"
+             style="min-height:320px;max-height:520px;overflow-y:auto;padding:8px 4px;background:#f8fafc;border-radius:8px;">
+          <div class="text-center text-muted py-5 small" id="chat-empty">
+            <i class="bi bi-chat-square-text" style="font-size:2rem;opacity:.3"></i>
+            <div class="mt-2">Envie uma mensagem para testar o agente</div>
+          </div>
+        </div>
+        <form id="test-form" class="mt-3" novalidate>
+          <?= csrf_field() ?>
+          <div class="input-group">
+            <input type="text" name="message" id="test-input" class="form-control"
+                   placeholder="Digite sua pergunta…" autocomplete="off">
+            <button type="submit" class="btn btn-warning fw-semibold" id="btn-test-send">
+              <span class="spinner-border spinner-border-sm d-none me-1" id="test-spin"></span>
+              <i class="bi bi-send-fill me-1"></i> Enviar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-info-circle text-info"></i> Como funciona
+      </div>
+      <div class="card-body small text-muted">
+        Cada mensagem é enviada para o provider de IA <strong>ativo</strong>
+        em <a href="<?= url('admin/settings?tab=ia') ?>">Configurações → IA</a>
+        com o seguinte contexto:
+        <ul class="ps-3 mt-2 mb-0" style="line-height:1.7;">
+          <li>Persona (system prompt)</li>
+          <li>Perguntas e respostas ativas</li>
+          <li>Texto extraído dos documentos</li>
+          <li>Conteúdo das páginas cadastradas</li>
+        </ul>
+        <hr>
+        <small>Cada teste consome créditos da sua conta no provider.</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /tab-testar -->
+
+
 <script>
 var AI_BASE = '<?= url('admin/ai-config') ?>';
 var AI_CSRF = '<?= \Core\CSRF::token() ?>';
@@ -411,6 +481,79 @@ function siteDelete(id) {
     if (res.success) document.getElementById('site-row-' + id)?.remove();
   });
 }
+
+// ── Test chat ────────────────────────────────────────────────
+function chatBubble(role, text) {
+  var thread = document.getElementById('chat-thread');
+  var empty  = document.getElementById('chat-empty');
+  if (empty) empty.remove();
+
+  var wrap = document.createElement('div');
+  wrap.className = 'd-flex mb-2 ' + (role === 'user' ? 'justify-content-end' : 'justify-content-start');
+
+  var bubble = document.createElement('div');
+  bubble.style.maxWidth   = '78%';
+  bubble.style.padding    = '8px 12px';
+  bubble.style.borderRadius = '12px';
+  bubble.style.fontSize   = '.88rem';
+  bubble.style.whiteSpace = 'pre-wrap';
+  bubble.style.wordBreak  = 'break-word';
+
+  if (role === 'user') {
+    bubble.style.background = '#3b82f6';
+    bubble.style.color = '#fff';
+  } else if (role === 'loading') {
+    bubble.style.background = '#e2e8f0';
+    bubble.style.color = '#475569';
+    bubble.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Pensando…';
+  } else if (role === 'error') {
+    bubble.style.background = '#fee2e2';
+    bubble.style.color = '#991b1b';
+  } else {
+    bubble.style.background = '#fff';
+    bubble.style.border = '1px solid #e2e8f0';
+    bubble.style.color = '#0f172a';
+  }
+  if (role !== 'loading') bubble.textContent = text;
+
+  wrap.appendChild(bubble);
+  thread.appendChild(wrap);
+  thread.scrollTop = thread.scrollHeight;
+  return wrap;
+}
+
+document.getElementById('test-form')?.addEventListener('submit', function (e) {
+  e.preventDefault();
+  var input = document.getElementById('test-input');
+  var btn   = document.getElementById('btn-test-send');
+  var spin  = document.getElementById('test-spin');
+  var msg   = (input.value || '').trim();
+  if (!msg) return;
+
+  chatBubble('user', msg);
+  input.value = '';
+  btn.disabled = true; spin.classList.remove('d-none');
+  var loadingNode = chatBubble('loading');
+
+  var fd = new FormData();
+  fd.append('_csrf_token', AI_CSRF);
+  fd.append('message', msg);
+
+  aiPost(AI_BASE + '/test', fd).then(function (res) {
+    btn.disabled = false; spin.classList.add('d-none');
+    loadingNode.remove();
+    if (res.success) {
+      chatBubble('assistant', res.data?.reply || '(vazio)');
+    } else {
+      chatBubble('error', res.message);
+    }
+    input.focus();
+  }).catch(function () {
+    btn.disabled = false; spin.classList.add('d-none');
+    loadingNode.remove();
+    chatBubble('error', 'Erro de conexão.');
+  });
+});
 </script>
 
 <?php \Core\View::endSection() ?>

@@ -54,6 +54,7 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     $router->post('/ai-config/docs/{id}/delete',['App\Controllers\AiConfigController', 'destroyDoc']);
     $router->post('/ai-config/sites',           ['App\Controllers\AiConfigController', 'storeSite']);
     $router->post('/ai-config/sites/{id}/delete',['App\Controllers\AiConfigController', 'destroySite']);
+    $router->post('/ai-config/test',            ['App\Controllers\AiConfigController', 'testChat']);
 
     // System update
     $router->get('/system-update', ['App\Controllers\SystemUpdateController', 'index']);
