@@ -23,7 +23,7 @@ $avatarBg     = $avatarColors[ord(($authUser['name'] ?? 'U')[0]) % count($avatar
 
 $chatOpen  = isGroupOpen(['/chat', 'queue', 'flow']);
 $crmOpen   = isGroupOpen(['/crm']);
-$adminOpen = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config']);
+$adminOpen = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config', 'license']);
 ?>
 <!-- Sidebar overlay (mobile) -->
 <div id="sidebar-overlay" class="sidebar-overlay"></div>
@@ -161,6 +161,12 @@ $adminOpen = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config']);
           <a href="<?= url('admin/ai-config') ?>" class="nav-link nav-sub<?= isActive('ai-config') ?>">
             <i class="bi bi-stars" style="color:#a855f7;"></i>
             <span class="link-label">IA Config</span>
+          </a>
+        </li>
+        <li>
+          <a href="<?= url('admin/license') ?>" class="nav-link nav-sub<?= isActive('license') ?>">
+            <i class="bi bi-key-fill text-warning"></i>
+            <span class="link-label">Licença</span>
           </a>
         </li>
         <li>

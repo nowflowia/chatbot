@@ -56,6 +56,10 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     $router->post('/ai-config/sites/{id}/delete',['App\Controllers\AiConfigController', 'destroySite']);
     $router->post('/ai-config/test',            ['App\Controllers\AiConfigController', 'testChat']);
 
+    // License diagnostics
+    $router->get('/license',         ['App\Controllers\LicenseController', 'index']);
+    $router->post('/license/refresh',['App\Controllers\LicenseController', 'refresh']);
+
     // System update
     $router->get('/system-update', ['App\Controllers\SystemUpdateController', 'index']);
     $router->post('/system-update/status', ['App\Controllers\SystemUpdateController', 'status']);
