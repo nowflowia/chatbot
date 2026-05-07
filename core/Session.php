@@ -13,6 +13,19 @@ class Session
             return;
         }
 
+        // Use a guaranteed-writable directory inside storage/ to avoid
+        // cPanel/shared-hosting environments where /tmp is not writable
+        // or is not shared across PHP worker processes.
+        if (defined('ROOT_PATH')) {
+            $savePath = ROOT_PATH . '/storage/sessions';
+            if (!is_dir($savePath)) {
+                @mkdir($savePath, 0755, true);
+            }
+            if (is_dir($savePath) && is_writable($savePath)) {
+                session_save_path($savePath);
+            }
+        }
+
         $secure   = config('app.session.secure', false);
         $lifetime = config('app.session.lifetime', 120) * 60;
 

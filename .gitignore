@@ -18,6 +18,10 @@ storage/logs/*.log
 storage/cache/*
 !storage/cache/.gitkeep
 
+# Sessions
+storage/sessions/*
+!storage/sessions/.gitkeep
+
 # Composer
 vendor/
 

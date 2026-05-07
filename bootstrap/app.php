@@ -72,8 +72,17 @@ Session::start();
 // Build request
 $request = new Request();
 
-// CSRF check
-CSRF::check($request);
+// CSRF check — skip for public auth endpoints and webhooks.
+// Login/forgot-password are excluded so session loss on shared hosting
+// does not permanently lock users out of the login form.
+$_csrfUri  = $request->uri();
+$_skipCsrf = $_csrfUri === '/login'
+          || $_csrfUri === '/forgot-password'
+          || str_starts_with($_csrfUri, '/invite/')
+          || str_starts_with($_csrfUri, '/webhook');
+if (!$_skipCsrf) {
+    CSRF::check($request);
+}
 
 // Load routes
 $router = new Router();
