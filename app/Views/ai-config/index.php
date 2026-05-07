@@ -1,0 +1,416 @@
+<?php \Core\View::section('title') ?>IA Config<?php \Core\View::endSection() ?>
+<?php \Core\View::section('page-title') ?>IA Config<?php \Core\View::endSection() ?>
+<?php \Core\View::section('content') ?>
+
+<?php
+$tab = $activeTab ?? 'persona';
+
+function fmtSize(int $bytes): string {
+    if ($bytes < 1024)        return $bytes . ' B';
+    if ($bytes < 1024 * 1024) return round($bytes / 1024, 1) . ' KB';
+    return round($bytes / 1024 / 1024, 2) . ' MB';
+}
+?>
+
+<ul class="nav nav-tabs mb-4" id="aicfg-tabs">
+  <li class="nav-item">
+    <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'persona' ? 'active' : '' ?>"
+       href="<?= url('admin/ai-config?tab=persona') ?>">
+      <i class="bi bi-person-badge text-primary"></i> Persona
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'base' ? 'active' : '' ?>"
+       href="<?= url('admin/ai-config?tab=base') ?>">
+      <i class="bi bi-database-fill text-success"></i> Base
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'site' ? 'active' : '' ?>"
+       href="<?= url('admin/ai-config?tab=site') ?>">
+      <i class="bi bi-globe2 text-info"></i> Site
+    </a>
+  </li>
+</ul>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: Persona
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-persona" <?= $tab !== 'persona' ? 'style="display:none"' : '' ?>>
+
+<div class="mb-4">
+  <h5 class="fw-bold mb-0">Persona do Agente</h5>
+  <small class="text-muted">Define como a IA deve se comportar, o tom de voz e regras de resposta</small>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-9">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-person-badge text-primary"></i> Prompt do agente
+      </div>
+      <div class="card-body">
+        <form id="persona-form" novalidate>
+          <?= csrf_field() ?>
+          <div class="mb-3">
+            <label class="form-label">Prompt</label>
+            <textarea name="prompt" class="form-control font-monospace" rows="14"
+                      placeholder="Você é um atendente da empresa X. Responda de forma cordial e objetiva. Sempre que não souber a resposta, diga que vai transferir para um humano…"><?= e($persona['prompt'] ?? '') ?></textarea>
+            <small class="text-muted">
+              Este texto é usado como <em>system prompt</em> em todas as conversas com a IA.
+            </small>
+          </div>
+          <button type="submit" class="btn btn-primary fw-semibold" id="btn-persona-save">
+            <span class="spinner-border spinner-border-sm d-none me-2" id="persona-save-spin"></span>
+            <i class="bi bi-floppy me-2"></i> Salvar persona
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-3">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-lightbulb text-warning"></i> Dicas
+      </div>
+      <div class="card-body small text-muted">
+        <ul class="ps-3 mb-0" style="line-height:1.8;">
+          <li>Seja específico sobre o tom (formal, descontraído).</li>
+          <li>Defina o que o agente <strong>não</strong> deve fazer.</li>
+          <li>Inclua o nome da empresa e do produto.</li>
+          <li>Diga em quais casos transferir para humano.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /tab-persona -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: Base (Q&A + Documentos)
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-base" <?= $tab !== 'base' ? 'style="display:none"' : '' ?>>
+
+<div class="mb-4">
+  <h5 class="fw-bold mb-0">Base de Conhecimento</h5>
+  <small class="text-muted">Cadastre perguntas e respostas e envie documentos para a IA consultar</small>
+</div>
+
+<div class="row g-4">
+  <!-- Q&A -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-chat-quote-fill text-success"></i> Pergunta e Resposta
+      </div>
+      <div class="card-body">
+        <form id="qa-form" novalidate class="mb-4">
+          <?= csrf_field() ?>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold">Pergunta</label>
+            <input type="text" name="question" class="form-control" maxlength="500"
+                   placeholder="Como faço para…">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold">Resposta</label>
+            <textarea name="answer" class="form-control" rows="3"
+                      placeholder="Para fazer isso, você deve…"></textarea>
+          </div>
+          <button type="submit" class="btn btn-success btn-sm fw-semibold" id="btn-qa-save">
+            <span class="spinner-border spinner-border-sm d-none me-1" id="qa-save-spin"></span>
+            <i class="bi bi-plus-lg me-1"></i> Cadastrar
+          </button>
+        </form>
+
+        <?php if (empty($qa)): ?>
+        <div class="text-center text-muted py-4 small">Nenhuma pergunta cadastrada ainda.</div>
+        <?php else: ?>
+        <div class="list-group list-group-flush">
+          <?php foreach ($qa as $row): ?>
+          <div class="list-group-item px-0 py-3" id="qa-row-<?= (int)$row['id'] ?>">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <div class="flex-grow-1">
+                <div class="fw-semibold small mb-1">
+                  <i class="bi bi-question-circle text-success me-1"></i><?= e($row['question']) ?>
+                </div>
+                <div class="small text-muted" style="white-space:pre-wrap"><?= e($row['answer']) ?></div>
+              </div>
+              <div class="d-flex gap-1 flex-shrink-0">
+                <button class="btn btn-sm btn-outline-secondary"
+                        title="<?= $row['is_active'] ? 'Desativar' : 'Ativar' ?>"
+                        onclick="qaToggle(<?= (int)$row['id'] ?>)">
+                  <i class="bi bi-<?= $row['is_active'] ? 'eye' : 'eye-slash' ?>"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger"
+                        title="Remover" onclick="qaDelete(<?= (int)$row['id'] ?>)">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+
+  <!-- Documents -->
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-file-earmark-text-fill text-primary"></i> Documentos
+      </div>
+      <div class="card-body">
+        <form id="doc-form" enctype="multipart/form-data" class="mb-3">
+          <?= csrf_field() ?>
+          <label class="form-label small fw-semibold">Enviar arquivo</label>
+          <div class="input-group input-group-sm">
+            <input type="file" name="document" id="doc-input"
+                   class="form-control"
+                   accept=".pdf,.md,.doc,.docx,application/pdf,text/markdown">
+            <button type="submit" class="btn btn-primary fw-semibold" id="btn-doc-upload">
+              <span class="spinner-border spinner-border-sm d-none me-1" id="doc-spin"></span>
+              <i class="bi bi-upload me-1"></i> Enviar
+            </button>
+          </div>
+          <small class="text-muted d-block mt-2">
+            Formatos aceitos: PDF, MD, DOC e DOCX. Limite de 25 MB.
+          </small>
+        </form>
+
+        <?php if (empty($docs)): ?>
+        <div class="text-center text-muted py-3 small">Nenhum documento enviado.</div>
+        <?php else: ?>
+        <div class="list-group list-group-flush">
+          <?php foreach ($docs as $d):
+            $ext = strtolower(pathinfo($d['original_name'], PATHINFO_EXTENSION));
+            $icoMap = [
+              'pdf'      => ['bi-file-earmark-pdf-fill', '#dc2626'],
+              'doc'      => ['bi-file-earmark-word-fill', '#2563eb'],
+              'docx'     => ['bi-file-earmark-word-fill', '#2563eb'],
+              'md'       => ['bi-markdown-fill', '#475569'],
+              'markdown' => ['bi-markdown-fill', '#475569'],
+            ];
+            $ico = $icoMap[$ext] ?? ['bi-file-earmark', '#94a3b8'];
+          ?>
+          <div class="list-group-item px-0 py-2 d-flex align-items-center gap-2"
+               id="doc-row-<?= (int)$d['id'] ?>">
+            <i class="bi <?= $ico[0] ?>" style="color:<?= $ico[1] ?>;font-size:1.4rem"></i>
+            <div class="flex-grow-1 min-w-0">
+              <div class="small fw-semibold text-truncate"><?= e($d['original_name']) ?></div>
+              <div class="text-muted" style="font-size:.7rem">
+                <?= fmtSize((int)$d['size_bytes']) ?> ·
+                <?= date('d/m/Y H:i', strtotime($d['created_at'])) ?>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-outline-danger flex-shrink-0"
+                    onclick="docDelete(<?= (int)$d['id'] ?>)" title="Remover">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+          <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /tab-base -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: Site
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-site" <?= $tab !== 'site' ? 'style="display:none"' : '' ?>>
+
+<div class="mb-4">
+  <h5 class="fw-bold mb-0">URLs de Sites</h5>
+  <small class="text-muted">Páginas web que servirão como base de conhecimento para a IA</small>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-globe2 text-info"></i> URLs cadastradas
+      </div>
+      <div class="card-body">
+        <form id="site-form" novalidate class="mb-4">
+          <?= csrf_field() ?>
+          <div class="row g-2">
+            <div class="col-md-7">
+              <label class="form-label small fw-semibold">URL da página</label>
+              <input type="url" name="url" class="form-control"
+                     placeholder="https://www.exemplo.com.br/sobre">
+              <div class="invalid-feedback" id="err-site-url"></div>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label small fw-semibold">Título (opcional)</label>
+              <input type="text" name="title" class="form-control" maxlength="255"
+                     placeholder="Sobre nós">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-info text-white btn-sm fw-semibold mt-3" id="btn-site-save">
+            <span class="spinner-border spinner-border-sm d-none me-1" id="site-save-spin"></span>
+            <i class="bi bi-plus-lg me-1"></i> Cadastrar URL
+          </button>
+        </form>
+
+        <?php if (empty($sites)): ?>
+        <div class="text-center text-muted py-4 small">Nenhuma URL cadastrada.</div>
+        <?php else: ?>
+        <div class="list-group list-group-flush">
+          <?php foreach ($sites as $s): ?>
+          <div class="list-group-item px-0 py-2 d-flex align-items-center gap-2"
+               id="site-row-<?= (int)$s['id'] ?>">
+            <i class="bi bi-globe2 text-info" style="font-size:1.2rem"></i>
+            <div class="flex-grow-1 min-w-0">
+              <?php if (!empty($s['title'])): ?>
+              <div class="small fw-semibold text-truncate"><?= e($s['title']) ?></div>
+              <?php endif; ?>
+              <a href="<?= e($s['url']) ?>" target="_blank" class="small text-truncate d-block"
+                 style="font-size:.78rem"><?= e($s['url']) ?></a>
+            </div>
+            <button class="btn btn-sm btn-outline-danger flex-shrink-0"
+                    onclick="siteDelete(<?= (int)$s['id'] ?>)" title="Remover">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+          <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /tab-site -->
+
+
+<script>
+var AI_BASE = '<?= url('admin/ai-config') ?>';
+var AI_CSRF = '<?= \Core\CSRF::token() ?>';
+
+function aiPost(url, body) {
+  return fetch(url, {
+    method: 'POST',
+    body: body,
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  }).then(r => r.json());
+}
+
+function aiToast(msg, type) {
+  if (window.Toast && typeof Toast.show === 'function') {
+    Toast.show(msg, type || 'success');
+  } else {
+    alert(msg);
+  }
+}
+
+// ── Persona ───────────────────────────────────────────────────
+document.getElementById('persona-form')?.addEventListener('submit', function (e) {
+  e.preventDefault();
+  var btn  = document.getElementById('btn-persona-save');
+  var spin = document.getElementById('persona-save-spin');
+  btn.disabled = true; spin.classList.remove('d-none');
+  aiPost(AI_BASE + '/persona', new FormData(this)).then(function (res) {
+    btn.disabled = false; spin.classList.add('d-none');
+    aiToast(res.message, res.success ? 'success' : 'danger');
+  });
+});
+
+// ── Q&A ───────────────────────────────────────────────────────
+document.getElementById('qa-form')?.addEventListener('submit', function (e) {
+  e.preventDefault();
+  var btn  = document.getElementById('btn-qa-save');
+  var spin = document.getElementById('qa-save-spin');
+  btn.disabled = true; spin.classList.remove('d-none');
+  aiPost(AI_BASE + '/qa', new FormData(this)).then(function (res) {
+    btn.disabled = false; spin.classList.add('d-none');
+    aiToast(res.message, res.success ? 'success' : 'danger');
+    if (res.success) setTimeout(function () { location.reload(); }, 600);
+  });
+});
+
+function qaDelete(id) {
+  if (!confirm('Remover esta pergunta?')) return;
+  var fd = new FormData(); fd.append('_csrf_token', AI_CSRF);
+  aiPost(AI_BASE + '/qa/' + id + '/delete', fd).then(function (res) {
+    aiToast(res.message, res.success ? 'success' : 'danger');
+    if (res.success) document.getElementById('qa-row-' + id)?.remove();
+  });
+}
+
+function qaToggle(id) {
+  var fd = new FormData(); fd.append('_csrf_token', AI_CSRF);
+  aiPost(AI_BASE + '/qa/' + id + '/toggle', fd).then(function (res) {
+    aiToast(res.message, res.success ? 'success' : 'danger');
+    if (res.success) setTimeout(function () { location.reload(); }, 400);
+  });
+}
+
+// ── Documents ─────────────────────────────────────────────────
+document.getElementById('doc-form')?.addEventListener('submit', function (e) {
+  e.preventDefault();
+  var btn  = document.getElementById('btn-doc-upload');
+  var spin = document.getElementById('doc-spin');
+  var fd   = new FormData(this);
+  if (!document.getElementById('doc-input').files.length) {
+    aiToast('Selecione um arquivo para enviar.', 'warning');
+    return;
+  }
+  btn.disabled = true; spin.classList.remove('d-none');
+  aiPost(AI_BASE + '/docs', fd).then(function (res) {
+    btn.disabled = false; spin.classList.add('d-none');
+    aiToast(res.message, res.success ? 'success' : 'danger');
+    if (res.success) setTimeout(function () { location.reload(); }, 600);
+  });
+});
+
+function docDelete(id) {
+  if (!confirm('Remover este documento?')) return;
+  var fd = new FormData(); fd.append('_csrf_token', AI_CSRF);
+  aiPost(AI_BASE + '/docs/' + id + '/delete', fd).then(function (res) {
+    aiToast(res.message, res.success ? 'success' : 'danger');
+    if (res.success) document.getElementById('doc-row-' + id)?.remove();
+  });
+}
+
+// ── Sites ─────────────────────────────────────────────────────
+document.getElementById('site-form')?.addEventListener('submit', function (e) {
+  e.preventDefault();
+  var btn  = document.getElementById('btn-site-save');
+  var spin = document.getElementById('site-save-spin');
+  var err  = document.getElementById('err-site-url');
+  err.textContent = ''; err.style.display = 'none';
+  btn.disabled = true; spin.classList.remove('d-none');
+  aiPost(AI_BASE + '/sites', new FormData(this)).then(function (res) {
+    btn.disabled = false; spin.classList.add('d-none');
+    if (res.success) {
+      aiToast(res.message, 'success');
+      setTimeout(function () { location.reload(); }, 500);
+    } else {
+      aiToast(res.message, 'danger');
+      if (res.errors && res.errors.url) {
+        err.textContent = res.errors.url[0]; err.style.display = 'block';
+      }
+    }
+  });
+});
+
+function siteDelete(id) {
+  if (!confirm('Remover esta URL?')) return;
+  var fd = new FormData(); fd.append('_csrf_token', AI_CSRF);
+  aiPost(AI_BASE + '/sites/' + id + '/delete', fd).then(function (res) {
+    aiToast(res.message, res.success ? 'success' : 'danger');
+    if (res.success) document.getElementById('site-row-' + id)?.remove();
+  });
+}
+</script>
+
+<?php \Core\View::endSection() ?>

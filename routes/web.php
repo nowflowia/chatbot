@@ -44,6 +44,17 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     $router->post('/settings/ai/test', ['App\Controllers\SettingsController', 'testAi']);
     $router->post('/settings/ai', ['App\Controllers\SettingsController', 'storeAi']);
 
+    // IA Config (Persona + Knowledge Base + Sites)
+    $router->get('/ai-config',                  ['App\Controllers\AiConfigController', 'index']);
+    $router->post('/ai-config/persona',         ['App\Controllers\AiConfigController', 'savePersona']);
+    $router->post('/ai-config/qa',              ['App\Controllers\AiConfigController', 'storeQa']);
+    $router->post('/ai-config/qa/{id}/toggle',  ['App\Controllers\AiConfigController', 'toggleQa']);
+    $router->post('/ai-config/qa/{id}/delete',  ['App\Controllers\AiConfigController', 'destroyQa']);
+    $router->post('/ai-config/docs',            ['App\Controllers\AiConfigController', 'uploadDoc']);
+    $router->post('/ai-config/docs/{id}/delete',['App\Controllers\AiConfigController', 'destroyDoc']);
+    $router->post('/ai-config/sites',           ['App\Controllers\AiConfigController', 'storeSite']);
+    $router->post('/ai-config/sites/{id}/delete',['App\Controllers\AiConfigController', 'destroySite']);
+
     // System update
     $router->get('/system-update', ['App\Controllers\SystemUpdateController', 'index']);
     $router->post('/system-update/status', ['App\Controllers\SystemUpdateController', 'status']);
