@@ -86,7 +86,7 @@ class WhatsAppAdminController extends Controller
             $headerType = 'none';
         }
 
-        $id = WhatsappTemplate::create([
+        $newId = WhatsappTemplate::create([
             'name'        => $name,
             'category'    => $category,
             'language'    => $language,
@@ -97,7 +97,7 @@ class WhatsAppAdminController extends Controller
             'status'      => 'draft',
         ]);
 
-        $template = WhatsappTemplate::find($id);
+        $template = WhatsappTemplate::find((int) $newId);
 
         $this->jsonSuccess('Template criado com sucesso!', ['template' => $template]);
     }

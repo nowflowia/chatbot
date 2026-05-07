@@ -31,7 +31,7 @@ class WhatsappTemplate extends Model
     /**
      * Find a single template by ID.
      */
-    public static function find(int $id): ?array
+    public static function find(int|string $id): ?array
     {
         return Database::getInstance()->selectOne(
             "SELECT * FROM whatsapp_templates WHERE id = ? LIMIT 1",
@@ -42,7 +42,7 @@ class WhatsappTemplate extends Model
     /**
      * Insert a new template and return its new ID.
      */
-    public static function create(array $data): int
+    public static function create(array $data): string|false
     {
         $db = Database::getInstance();
         $ts = now();
@@ -58,7 +58,7 @@ class WhatsappTemplate extends Model
             }
         }
 
-        return (int) $db->insert(
+        return $db->insert(
             "INSERT INTO whatsapp_templates
                 (name, category, language, header_type, header_text, body_text,
                  footer_text, buttons, variables, status, meta_template_id,
@@ -86,7 +86,7 @@ class WhatsappTemplate extends Model
     /**
      * Update an existing template by ID.
      */
-    public static function update(int $id, array $data): void
+    public static function update(int|string $id, array $data): int
     {
         $db = Database::getInstance();
         $ts = now();
@@ -127,14 +127,14 @@ class WhatsappTemplate extends Model
         }
 
         if (empty($sets)) {
-            return;
+            return 0;
         }
 
         $sets[]     = "`updated_at` = ?";
         $bindings[] = $ts;
         $bindings[] = $id;
 
-        $db->update(
+        return $db->update(
             "UPDATE whatsapp_templates SET " . implode(', ', $sets) . " WHERE id = ?",
             $bindings
         );
@@ -143,9 +143,9 @@ class WhatsappTemplate extends Model
     /**
      * Delete a template by ID.
      */
-    public static function delete(int $id): void
+    public static function delete(int|string $id): int
     {
-        Database::getInstance()->delete(
+        return Database::getInstance()->delete(
             "DELETE FROM whatsapp_templates WHERE id = ?",
             [$id]
         );
