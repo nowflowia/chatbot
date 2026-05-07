@@ -14,10 +14,13 @@ class Session
         }
 
         // Use a guaranteed-writable directory inside storage/ to avoid
-        // cPanel/shared-hosting environments where /tmp is not writable
-        // or is not shared across PHP worker processes.
-        if (defined('ROOT_PATH')) {
-            $savePath = ROOT_PATH . '/storage/sessions';
+        // cPanel/shared-hosting environments where /tmp is not shared
+        // across PHP worker processes (which loses sessions between requests).
+        $savePath = defined('STORAGE_PATH')
+            ? STORAGE_PATH . '/sessions'
+            : (defined('ROOT_PATH') ? ROOT_PATH . '/storage/sessions' : null);
+
+        if ($savePath) {
             if (!is_dir($savePath)) {
                 @mkdir($savePath, 0755, true);
             }
