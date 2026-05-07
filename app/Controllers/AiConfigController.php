@@ -90,12 +90,17 @@ class AiConfigController extends Controller
         }
 
         $ts = now();
-        Database::getInstance()->insert(
+        $id = Database::getInstance()->insert(
             "INSERT INTO ai_knowledge_qa (question, answer, is_active, created_at, updated_at) VALUES (?, ?, 1, ?, ?)",
             [$q, $a, $ts, $ts]
         );
 
-        $this->jsonSuccess('Pergunta cadastrada!');
+        $this->jsonSuccess('Pergunta cadastrada!', [
+            'id'        => (int)$id,
+            'question'  => $q,
+            'answer'    => $a,
+            'is_active' => 1,
+        ]);
     }
 
     public function destroyQa(Request $request, $id): void
@@ -108,11 +113,13 @@ class AiConfigController extends Controller
     public function toggleQa(Request $request, $id): void
     {
         $this->requireAdmin();
-        Database::getInstance()->update(
+        $db = Database::getInstance();
+        $db->update(
             "UPDATE ai_knowledge_qa SET is_active = 1 - is_active, updated_at=? WHERE id=?",
             [now(), (int)$id]
         );
-        $this->jsonSuccess('Atualizada.');
+        $row = $db->selectOne("SELECT is_active FROM ai_knowledge_qa WHERE id=?", [(int)$id]);
+        $this->jsonSuccess('Atualizada.', ['is_active' => (int)($row['is_active'] ?? 0)]);
     }
 
     // ── Documents ─────────────────────────────────────────────────
@@ -166,6 +173,7 @@ class AiConfigController extends Controller
             'id'            => (int)$id,
             'original_name' => $file['name'],
             'size_bytes'    => (int)$file['size'],
+            'created_at'    => $ts,
             'has_text'      => $extracted !== '',
         ]);
     }
@@ -198,7 +206,7 @@ class AiConfigController extends Controller
         $content = AiService::fetchSiteContent($url);
         $ts      = now();
 
-        Database::getInstance()->insert(
+        $id = Database::getInstance()->insert(
             "INSERT INTO ai_knowledge_sites
                 (url, title, content, is_active, last_scraped_at, created_at, updated_at)
              VALUES (?, ?, ?, 1, ?, ?, ?)",
@@ -209,7 +217,12 @@ class AiConfigController extends Controller
         if ($content === '') {
             $msg .= ' Atenção: o conteúdo da página não pôde ser baixado.';
         }
-        $this->jsonSuccess($msg, ['has_content' => $content !== '']);
+        $this->jsonSuccess($msg, [
+            'id'          => (int)$id,
+            'url'         => $url,
+            'title'       => $title ?: '',
+            'has_content' => $content !== '',
+        ]);
     }
 
     public function destroySite(Request $request, $id): void

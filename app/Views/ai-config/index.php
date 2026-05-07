@@ -20,9 +20,15 @@ function fmtSize(int $bytes): string {
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'base' ? 'active' : '' ?>"
-       href="<?= url('admin/ai-config?tab=base') ?>">
-      <i class="bi bi-database-fill text-success"></i> Base
+    <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'qa' ? 'active' : '' ?>"
+       href="<?= url('admin/ai-config?tab=qa') ?>">
+      <i class="bi bi-chat-quote-fill text-success"></i> Pergunta e Resposta
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'docs' ? 'active' : '' ?>"
+       href="<?= url('admin/ai-config?tab=docs') ?>">
+      <i class="bi bi-file-earmark-text-fill text-primary"></i> Documentos
     </a>
   </li>
   <li class="nav-item">
@@ -96,47 +102,29 @@ function fmtSize(int $bytes): string {
 
 
 <!-- ═══════════════════════════════════════════════════════════
-     TAB: Base (Q&A + Documentos)
+     TAB: Pergunta e Resposta
 ═══════════════════════════════════════════════════════════ -->
-<div id="tab-base" <?= $tab !== 'base' ? 'style="display:none"' : '' ?>>
+<div id="tab-qa" <?= $tab !== 'qa' ? 'style="display:none"' : '' ?>>
 
 <div class="mb-4">
-  <h5 class="fw-bold mb-0">Base de Conhecimento</h5>
-  <small class="text-muted">Cadastre perguntas e respostas e envie documentos para a IA consultar</small>
+  <h5 class="fw-bold mb-0">Pergunta e Resposta</h5>
+  <small class="text-muted">Cadastre pares de pergunta e resposta para o agente consultar</small>
 </div>
 
 <div class="row g-4">
-  <!-- Q&A -->
   <div class="col-lg-7">
     <div class="card">
       <div class="card-header d-flex align-items-center gap-2">
-        <i class="bi bi-chat-quote-fill text-success"></i> Pergunta e Resposta
+        <i class="bi bi-collection-fill text-success"></i> Lista
       </div>
       <div class="card-body">
-        <form id="qa-form" novalidate class="mb-4">
-          <?= csrf_field() ?>
-          <div class="mb-2">
-            <label class="form-label small fw-semibold">Pergunta</label>
-            <input type="text" name="question" class="form-control" maxlength="500"
-                   placeholder="Como faço para…">
-          </div>
-          <div class="mb-2">
-            <label class="form-label small fw-semibold">Resposta</label>
-            <textarea name="answer" class="form-control" rows="3"
-                      placeholder="Para fazer isso, você deve…"></textarea>
-          </div>
-          <button type="submit" class="btn btn-success btn-sm fw-semibold" id="btn-qa-save">
-            <span class="spinner-border spinner-border-sm d-none me-1" id="qa-save-spin"></span>
-            <i class="bi bi-plus-lg me-1"></i> Cadastrar
-          </button>
-        </form>
-
-        <?php if (empty($qa)): ?>
-        <div class="text-center text-muted py-4 small">Nenhuma pergunta cadastrada ainda.</div>
-        <?php else: ?>
-        <div class="list-group list-group-flush">
+        <div id="qa-empty" class="text-center text-muted py-4 small <?= empty($qa) ? '' : 'd-none' ?>">
+          Nenhuma pergunta cadastrada ainda.
+        </div>
+        <div id="qa-list" class="list-group list-group-flush">
           <?php foreach ($qa as $row): ?>
-          <div class="list-group-item px-0 py-3" id="qa-row-<?= (int)$row['id'] ?>">
+          <div class="list-group-item px-0 py-3" id="qa-row-<?= (int)$row['id'] ?>"
+               data-active="<?= (int)$row['is_active'] ?>">
             <div class="d-flex justify-content-between align-items-start gap-2">
               <div class="flex-grow-1">
                 <div class="fw-semibold small mb-1">
@@ -145,7 +133,7 @@ function fmtSize(int $bytes): string {
                 <div class="small text-muted" style="white-space:pre-wrap"><?= e($row['answer']) ?></div>
               </div>
               <div class="d-flex gap-1 flex-shrink-0">
-                <button class="btn btn-sm btn-outline-secondary"
+                <button class="btn btn-sm btn-outline-secondary qa-toggle-btn"
                         title="<?= $row['is_active'] ? 'Desativar' : 'Ativar' ?>"
                         onclick="qaToggle(<?= (int)$row['id'] ?>)">
                   <i class="bi bi-<?= $row['is_active'] ? 'eye' : 'eye-slash' ?>"></i>
@@ -159,39 +147,62 @@ function fmtSize(int $bytes): string {
           </div>
           <?php endforeach; ?>
         </div>
-        <?php endif; ?>
       </div>
     </div>
   </div>
 
-  <!-- Documents -->
   <div class="col-lg-5">
     <div class="card">
       <div class="card-header d-flex align-items-center gap-2">
-        <i class="bi bi-file-earmark-text-fill text-primary"></i> Documentos
+        <i class="bi bi-plus-circle text-success"></i> Nova entrada
       </div>
       <div class="card-body">
-        <form id="doc-form" enctype="multipart/form-data" class="mb-3">
+        <form id="qa-form" novalidate>
           <?= csrf_field() ?>
-          <label class="form-label small fw-semibold">Enviar arquivo</label>
-          <div class="input-group input-group-sm">
-            <input type="file" name="document" id="doc-input"
-                   class="form-control"
-                   accept=".pdf,.md,.doc,.docx,application/pdf,text/markdown">
-            <button type="submit" class="btn btn-primary fw-semibold" id="btn-doc-upload">
-              <span class="spinner-border spinner-border-sm d-none me-1" id="doc-spin"></span>
-              <i class="bi bi-upload me-1"></i> Enviar
-            </button>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold">Pergunta</label>
+            <input type="text" name="question" class="form-control" maxlength="500"
+                   placeholder="Como faço para…">
           </div>
-          <small class="text-muted d-block mt-2">
-            Formatos aceitos: PDF, MD, DOC e DOCX. Limite de 25 MB.
-          </small>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Resposta</label>
+            <textarea name="answer" class="form-control" rows="4"
+                      placeholder="Para fazer isso, você deve…"></textarea>
+          </div>
+          <button type="submit" class="btn btn-success fw-semibold w-100" id="btn-qa-save">
+            <span class="spinner-border spinner-border-sm d-none me-1" id="qa-save-spin"></span>
+            <i class="bi bi-plus-lg me-1"></i> Cadastrar
+          </button>
         </form>
+      </div>
+    </div>
+  </div>
+</div>
 
-        <?php if (empty($docs)): ?>
-        <div class="text-center text-muted py-3 small">Nenhum documento enviado.</div>
-        <?php else: ?>
-        <div class="list-group list-group-flush">
+</div><!-- /tab-qa -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: Documentos
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-docs" <?= $tab !== 'docs' ? 'style="display:none"' : '' ?>>
+
+<div class="mb-4">
+  <h5 class="fw-bold mb-0">Documentos</h5>
+  <small class="text-muted">Envie arquivos para que a IA consulte como referência</small>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-folder-fill text-primary"></i> Arquivos enviados
+      </div>
+      <div class="card-body">
+        <div id="doc-empty" class="text-center text-muted py-4 small <?= empty($docs) ? '' : 'd-none' ?>">
+          Nenhum documento enviado.
+        </div>
+        <div id="doc-list" class="list-group list-group-flush">
           <?php foreach ($docs as $d):
             $ext = strtolower(pathinfo($d['original_name'], PATHINFO_EXTENSION));
             $icoMap = [
@@ -220,13 +231,36 @@ function fmtSize(int $bytes): string {
           </div>
           <?php endforeach; ?>
         </div>
-        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-cloud-upload-fill text-primary"></i> Enviar arquivo
+      </div>
+      <div class="card-body">
+        <form id="doc-form" enctype="multipart/form-data">
+          <?= csrf_field() ?>
+          <input type="file" name="document" id="doc-input"
+                 class="form-control mb-3"
+                 accept=".pdf,.md,.doc,.docx,application/pdf,text/markdown">
+          <button type="submit" class="btn btn-primary fw-semibold w-100" id="btn-doc-upload">
+            <span class="spinner-border spinner-border-sm d-none me-1" id="doc-spin"></span>
+            <i class="bi bi-upload me-1"></i> Enviar
+          </button>
+          <small class="text-muted d-block mt-3">
+            Formatos aceitos: PDF, MD, DOC e DOCX.<br>
+            Limite de 25 MB por arquivo.
+          </small>
+        </form>
       </div>
     </div>
   </div>
 </div>
 
-</div><!-- /tab-base -->
+</div><!-- /tab-docs -->
 
 
 <!-- ═══════════════════════════════════════════════════════════
@@ -267,10 +301,10 @@ function fmtSize(int $bytes): string {
           </button>
         </form>
 
-        <?php if (empty($sites)): ?>
-        <div class="text-center text-muted py-4 small">Nenhuma URL cadastrada.</div>
-        <?php else: ?>
-        <div class="list-group list-group-flush">
+        <div id="site-empty" class="text-center text-muted py-4 small <?= empty($sites) ? '' : 'd-none' ?>">
+          Nenhuma URL cadastrada.
+        </div>
+        <div id="site-list" class="list-group list-group-flush">
           <?php foreach ($sites as $s): ?>
           <div class="list-group-item px-0 py-2 d-flex align-items-center gap-2"
                id="site-row-<?= (int)$s['id'] ?>">
@@ -289,7 +323,6 @@ function fmtSize(int $bytes): string {
           </div>
           <?php endforeach; ?>
         </div>
-        <?php endif; ?>
       </div>
     </div>
   </div>
@@ -394,7 +427,58 @@ document.getElementById('persona-form')?.addEventListener('submit', function (e)
   });
 });
 
+// ── Helpers ───────────────────────────────────────────────────
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, function (c) {
+    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+  });
+}
+function fmtSize(bytes) {
+  if (bytes < 1024)         return bytes + ' B';
+  if (bytes < 1048576)      return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(2) + ' MB';
+}
+function fmtDate(iso) {
+  if (!iso) return '';
+  var d = new Date(iso.replace(' ', 'T'));
+  if (isNaN(d)) return '';
+  return d.toLocaleDateString('pt-BR') + ' ' +
+         d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+}
+function ensureEmptyHidden(emptyId) {
+  var el = document.getElementById(emptyId);
+  if (el) el.classList.add('d-none');
+}
+function showEmptyIfEmpty(listId, emptyId) {
+  var list  = document.getElementById(listId);
+  var empty = document.getElementById(emptyId);
+  if (list && empty && !list.querySelector('.list-group-item')) {
+    empty.classList.remove('d-none');
+  }
+}
+
 // ── Q&A ───────────────────────────────────────────────────────
+function qaRowHtml(row) {
+  var icon = row.is_active ? 'eye' : 'eye-slash';
+  var ttl  = row.is_active ? 'Desativar' : 'Ativar';
+  return '<div class="list-group-item px-0 py-3" id="qa-row-' + row.id + '"'
+       + ' data-active="' + (row.is_active ? 1 : 0) + '">'
+       + '<div class="d-flex justify-content-between align-items-start gap-2">'
+       +   '<div class="flex-grow-1">'
+       +     '<div class="fw-semibold small mb-1">'
+       +       '<i class="bi bi-question-circle text-success me-1"></i>' + escapeHtml(row.question)
+       +     '</div>'
+       +     '<div class="small text-muted" style="white-space:pre-wrap">' + escapeHtml(row.answer) + '</div>'
+       +   '</div>'
+       +   '<div class="d-flex gap-1 flex-shrink-0">'
+       +     '<button class="btn btn-sm btn-outline-secondary qa-toggle-btn" title="' + ttl + '" onclick="qaToggle(' + row.id + ')">'
+       +       '<i class="bi bi-' + icon + '"></i></button>'
+       +     '<button class="btn btn-sm btn-outline-danger" title="Remover" onclick="qaDelete(' + row.id + ')">'
+       +       '<i class="bi bi-trash"></i></button>'
+       +   '</div>'
+       + '</div></div>';
+}
+
 document.getElementById('qa-form')?.addEventListener('submit', function (e) {
   e.preventDefault();
   var btn  = document.getElementById('btn-qa-save');
@@ -403,7 +487,12 @@ document.getElementById('qa-form')?.addEventListener('submit', function (e) {
   aiPost(AI_BASE + '/qa', new FormData(this)).then(function (res) {
     btn.disabled = false; spin.classList.add('d-none');
     aiToast(res.message, res.success ? 'success' : 'danger');
-    if (res.success) setTimeout(function () { location.reload(); }, 600);
+    if (res.success) {
+      var list = document.getElementById('qa-list');
+      list.insertAdjacentHTML('afterbegin', qaRowHtml(res.data));
+      ensureEmptyHidden('qa-empty');
+      document.getElementById('qa-form').reset();
+    }
   });
 });
 
@@ -412,33 +501,76 @@ function qaDelete(id) {
   var fd = new FormData(); fd.append('_csrf_token', AI_CSRF);
   aiPost(AI_BASE + '/qa/' + id + '/delete', fd).then(function (res) {
     aiToast(res.message, res.success ? 'success' : 'danger');
-    if (res.success) document.getElementById('qa-row-' + id)?.remove();
+    if (res.success) {
+      document.getElementById('qa-row-' + id)?.remove();
+      showEmptyIfEmpty('qa-list', 'qa-empty');
+    }
   });
 }
 
 function qaToggle(id) {
   var fd = new FormData(); fd.append('_csrf_token', AI_CSRF);
   aiPost(AI_BASE + '/qa/' + id + '/toggle', fd).then(function (res) {
-    aiToast(res.message, res.success ? 'success' : 'danger');
-    if (res.success) setTimeout(function () { location.reload(); }, 400);
+    if (!res.success) { aiToast(res.message, 'danger'); return; }
+    var row = document.getElementById('qa-row-' + id);
+    if (!row) return;
+    var active = res.data?.is_active ? 1 : 0;
+    row.dataset.active = active;
+    var btn = row.querySelector('.qa-toggle-btn');
+    var ico = btn?.querySelector('i');
+    if (btn && ico) {
+      ico.className = 'bi bi-' + (active ? 'eye' : 'eye-slash');
+      btn.title = active ? 'Desativar' : 'Ativar';
+    }
+    aiToast(active ? 'Ativada.' : 'Desativada.', 'success');
   });
 }
 
 // ── Documents ─────────────────────────────────────────────────
+function docIcon(filename) {
+  var ext = (filename.split('.').pop() || '').toLowerCase();
+  var map = {
+    pdf:  ['bi-file-earmark-pdf-fill', '#dc2626'],
+    doc:  ['bi-file-earmark-word-fill', '#2563eb'],
+    docx: ['bi-file-earmark-word-fill', '#2563eb'],
+    md:   ['bi-markdown-fill', '#475569'],
+  };
+  return map[ext] || ['bi-file-earmark', '#94a3b8'];
+}
+function docRowHtml(row) {
+  var ico = docIcon(row.original_name);
+  return '<div class="list-group-item px-0 py-2 d-flex align-items-center gap-2" id="doc-row-' + row.id + '">'
+       + '<i class="bi ' + ico[0] + '" style="color:' + ico[1] + ';font-size:1.4rem"></i>'
+       + '<div class="flex-grow-1 min-w-0">'
+       +   '<div class="small fw-semibold text-truncate">' + escapeHtml(row.original_name) + '</div>'
+       +   '<div class="text-muted" style="font-size:.7rem">'
+       +     fmtSize(row.size_bytes) + ' · ' + escapeHtml(fmtDate(row.created_at))
+       +   '</div>'
+       + '</div>'
+       + '<button class="btn btn-sm btn-outline-danger flex-shrink-0" onclick="docDelete(' + row.id + ')" title="Remover">'
+       +   '<i class="bi bi-trash"></i></button>'
+       + '</div>';
+}
+
 document.getElementById('doc-form')?.addEventListener('submit', function (e) {
   e.preventDefault();
   var btn  = document.getElementById('btn-doc-upload');
   var spin = document.getElementById('doc-spin');
-  var fd   = new FormData(this);
-  if (!document.getElementById('doc-input').files.length) {
+  var inp  = document.getElementById('doc-input');
+  if (!inp.files.length) {
     aiToast('Selecione um arquivo para enviar.', 'warning');
     return;
   }
   btn.disabled = true; spin.classList.remove('d-none');
-  aiPost(AI_BASE + '/docs', fd).then(function (res) {
+  aiPost(AI_BASE + '/docs', new FormData(this)).then(function (res) {
     btn.disabled = false; spin.classList.add('d-none');
     aiToast(res.message, res.success ? 'success' : 'danger');
-    if (res.success) setTimeout(function () { location.reload(); }, 600);
+    if (res.success) {
+      var list = document.getElementById('doc-list');
+      list.insertAdjacentHTML('afterbegin', docRowHtml(res.data));
+      ensureEmptyHidden('doc-empty');
+      document.getElementById('doc-form').reset();
+    }
   });
 });
 
@@ -447,11 +579,30 @@ function docDelete(id) {
   var fd = new FormData(); fd.append('_csrf_token', AI_CSRF);
   aiPost(AI_BASE + '/docs/' + id + '/delete', fd).then(function (res) {
     aiToast(res.message, res.success ? 'success' : 'danger');
-    if (res.success) document.getElementById('doc-row-' + id)?.remove();
+    if (res.success) {
+      document.getElementById('doc-row-' + id)?.remove();
+      showEmptyIfEmpty('doc-list', 'doc-empty');
+    }
   });
 }
 
 // ── Sites ─────────────────────────────────────────────────────
+function siteRowHtml(row) {
+  var titleHtml = row.title
+    ? '<div class="small fw-semibold text-truncate">' + escapeHtml(row.title) + '</div>'
+    : '';
+  return '<div class="list-group-item px-0 py-2 d-flex align-items-center gap-2" id="site-row-' + row.id + '">'
+       + '<i class="bi bi-globe2 text-info" style="font-size:1.2rem"></i>'
+       + '<div class="flex-grow-1 min-w-0">'
+       +   titleHtml
+       +   '<a href="' + escapeHtml(row.url) + '" target="_blank" class="small text-truncate d-block" style="font-size:.78rem">'
+       +     escapeHtml(row.url) + '</a>'
+       + '</div>'
+       + '<button class="btn btn-sm btn-outline-danger flex-shrink-0" onclick="siteDelete(' + row.id + ')" title="Remover">'
+       +   '<i class="bi bi-trash"></i></button>'
+       + '</div>';
+}
+
 document.getElementById('site-form')?.addEventListener('submit', function (e) {
   e.preventDefault();
   var btn  = document.getElementById('btn-site-save');
@@ -463,7 +614,10 @@ document.getElementById('site-form')?.addEventListener('submit', function (e) {
     btn.disabled = false; spin.classList.add('d-none');
     if (res.success) {
       aiToast(res.message, 'success');
-      setTimeout(function () { location.reload(); }, 500);
+      var list = document.getElementById('site-list');
+      list.insertAdjacentHTML('afterbegin', siteRowHtml(res.data));
+      ensureEmptyHidden('site-empty');
+      document.getElementById('site-form').reset();
     } else {
       aiToast(res.message, 'danger');
       if (res.errors && res.errors.url) {
@@ -478,7 +632,10 @@ function siteDelete(id) {
   var fd = new FormData(); fd.append('_csrf_token', AI_CSRF);
   aiPost(AI_BASE + '/sites/' + id + '/delete', fd).then(function (res) {
     aiToast(res.message, res.success ? 'success' : 'danger');
-    if (res.success) document.getElementById('site-row-' + id)?.remove();
+    if (res.success) {
+      document.getElementById('site-row-' + id)?.remove();
+      showEmptyIfEmpty('site-list', 'site-empty');
+    }
   });
 }
 
