@@ -9,8 +9,10 @@ use Core\Auth;
 use App\Models\WhatsappSetting;
 use App\Models\MailSetting;
 use App\Models\CompanySetting;
+use App\Models\AiSetting;
 use App\Services\MetaWhatsAppService;
 use App\Services\MailService;
+use App\Services\AiService;
 
 class SettingsController extends Controller
 {
@@ -45,6 +47,12 @@ class SettingsController extends Controller
             );
         } catch (\Throwable $e) {}
 
+        // AI settings (one row per provider)
+        $aiSettings = [];
+        try {
+            $aiSettings = AiSetting::indexed();
+        } catch (\Throwable $e) {}
+
         return $this->view('settings/index', [
             'settings'        => $settings,
             'mailSettings'    => $mailSettings,
@@ -53,6 +61,9 @@ class SettingsController extends Controller
             'activeTab'       => $tab,
             'updateData'      => $updateData,
             'apiKeys'         => $apiKeys,
+            'aiSettings'      => $aiSettings,
+            'aiModels'        => AiService::MODELS,
+            'aiLabels'        => AiService::LABELS,
         ]);
     }
 
@@ -262,6 +273,69 @@ HTML;
         } catch (\Throwable $e) {
             logger('SMTP test error: ' . $e->getMessage(), 'error');
             $this->jsonError('Erro SMTP: ' . $e->getMessage());
+        }
+    }
+
+    // ── IA (OpenAI / Anthropic) ───────────────────────────────────
+
+    public function storeAi(Request $request): void
+    {
+        if (!Auth::isAdmin()) { $this->jsonError('Acesso negado.', [], 403); }
+        if (!$request->isAjax()) {
+            $this->redirect(url('admin/settings?tab=ia'));
+        }
+
+        $provider = trim((string)$request->post('provider', ''));
+        if (!in_array($provider, AiSetting::PROVIDERS, true)) {
+            $this->jsonError('Provider inválido.');
+        }
+
+        $model = trim((string)$request->post('model', ''));
+        if ($model === '') {
+            $this->jsonError('Selecione ou informe um modelo.', ['model' => ['Modelo obrigatório.']], 422);
+        }
+
+        try {
+            AiSetting::save($provider, [
+                'api_key'   => (string)$request->post('api_key', ''),
+                'model'     => $model,
+                'is_active' => $request->post('is_active') ? 1 : 0,
+            ]);
+            $this->jsonSuccess('Configurações de IA salvas com sucesso!');
+        } catch (\Throwable $e) {
+            logger('storeAi error: ' . $e->getMessage(), 'error');
+            $this->jsonError('Erro ao salvar: ' . $e->getMessage());
+        }
+    }
+
+    public function testAi(Request $request): void
+    {
+        if (!Auth::isAdmin()) { $this->jsonError('Acesso negado.', [], 403); }
+
+        $provider = trim((string)$request->post('provider', ''));
+        if (!in_array($provider, AiSetting::PROVIDERS, true)) {
+            $this->jsonError('Provider inválido.');
+        }
+
+        $row = AiSetting::get($provider);
+        if (!$row || empty($row['api_key'])) {
+            $this->jsonError('Configure e salve a API key antes de testar.');
+        }
+
+        try {
+            $service = new AiService();
+            $result  = $service->testConnection($provider, (string)$row['api_key'], (string)($row['model'] ?? ''));
+
+            AiSetting::updateTestStatus($provider, $result['ok'], $result['ok'] ? null : $result['message']);
+
+            if ($result['ok']) {
+                $this->jsonSuccess($result['message'], $result['data']);
+            } else {
+                $this->jsonError($result['message']);
+            }
+        } catch (\Throwable $e) {
+            logger('testAi error: ' . $e->getMessage(), 'error');
+            $this->jsonError('Erro ao testar: ' . $e->getMessage());
         }
     }
 }

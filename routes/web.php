@@ -40,6 +40,9 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     // static /mail/test before /mail
     $router->post('/settings/mail/test', ['App\Controllers\SettingsController', 'testMail']);
     $router->post('/settings/mail', ['App\Controllers\SettingsController', 'storeMail']);
+    // IA (OpenAI / Anthropic)
+    $router->post('/settings/ai/test', ['App\Controllers\SettingsController', 'testAi']);
+    $router->post('/settings/ai', ['App\Controllers\SettingsController', 'storeAi']);
 
     // System update
     $router->get('/system-update', ['App\Controllers\SystemUpdateController', 'index']);

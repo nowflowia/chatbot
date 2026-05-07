@@ -41,6 +41,12 @@ $tab = $activeTab ?? 'empresa';
     </a>
   </li>
   <li class="nav-item">
+    <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'ia' ? 'active' : '' ?>"
+       href="<?= url('admin/settings?tab=ia') ?>">
+      <i class="bi bi-stars text-purple" style="color:#a855f7;"></i> IA
+    </a>
+  </li>
+  <li class="nav-item">
     <a class="nav-link d-flex align-items-center gap-2 <?= $tab === 'api' ? 'active' : '' ?>"
        href="<?= url('admin/settings?tab=api') ?>">
       <i class="bi bi-key-fill text-danger"></i> API
@@ -655,6 +661,149 @@ $tab = $activeTab ?? 'empresa';
   </div>
 </div>
 </div><!-- /tab-smtp -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: IA (OpenAI / Anthropic)
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-ia" <?= $tab !== 'ia' ? 'style="display:none"' : '' ?>>
+
+<div class="mb-4">
+  <h5 class="fw-bold mb-0">Configurações de IA</h5>
+  <small class="text-muted">Conecte com OpenAI e/ou Anthropic Claude para usar nos fluxos automatizados</small>
+</div>
+
+<div class="row g-4">
+  <?php foreach (['openai', 'anthropic'] as $prov):
+    $row     = $aiSettings[$prov] ?? [];
+    $models  = $aiModels[$prov]   ?? [];
+    $label   = $aiLabels[$prov]   ?? ucfirst($prov);
+    $current = $row['model'] ?? '';
+    $iconCol = $prov === 'openai' ? '#10a37f' : '#d97706';
+    $iconBi  = $prov === 'openai' ? 'bi-robot' : 'bi-stars';
+    $tested  = !empty($row['last_tested_at']);
+    $err     = $row['last_error'] ?? '';
+  ?>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span class="fw-semibold d-flex align-items-center gap-2">
+          <i class="bi <?= $iconBi ?>" style="color:<?= $iconCol ?>;"></i>
+          <?= e($label) ?>
+        </span>
+        <?php if ($tested && empty($err)): ?>
+        <span class="badge bg-success-subtle text-success" style="font-size:.7rem;">
+          <i class="bi bi-check-circle-fill"></i> Conectado
+        </span>
+        <?php elseif (!empty($err)): ?>
+        <span class="badge bg-danger-subtle text-danger" style="font-size:.7rem;">
+          <i class="bi bi-x-circle-fill"></i> Erro
+        </span>
+        <?php else: ?>
+        <span class="badge bg-secondary-subtle text-secondary" style="font-size:.7rem;">
+          Não testado
+        </span>
+        <?php endif; ?>
+      </div>
+      <div class="card-body">
+        <div id="ai-alert-<?= $prov ?>"></div>
+        <form class="ai-form" data-provider="<?= $prov ?>" novalidate>
+          <?= csrf_field() ?>
+          <input type="hidden" name="provider" value="<?= $prov ?>">
+
+          <div class="mb-3">
+            <label class="form-label">API Key <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="password" name="api_key" id="ai_key_<?= $prov ?>"
+                     class="form-control font-monospace"
+                     placeholder="<?= $prov === 'openai' ? 'sk-...' : 'sk-ant-...' ?>"
+                     value="<?= e($row['api_key'] ?? '') ?>">
+              <button type="button" class="btn btn-outline-secondary"
+                      onclick="toggleSecret('ai_key_<?= $prov ?>','icon-ai-<?= $prov ?>')">
+                <i class="bi bi-eye" id="icon-ai-<?= $prov ?>"></i>
+              </button>
+            </div>
+            <small class="text-muted">
+              <?php if ($prov === 'openai'): ?>
+              Obtenha em <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>
+              <?php else: ?>
+              Obtenha em <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a>
+              <?php endif; ?>
+            </small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Modelo <span class="text-danger">*</span></label>
+            <select class="form-select" id="ai_model_select_<?= $prov ?>"
+                    onchange="onAiModelSelectChange('<?= $prov ?>')">
+              <option value="">— Selecione —</option>
+              <?php foreach ($models as $val => $lbl): ?>
+              <option value="<?= e($val) ?>" <?= $current === $val ? 'selected' : '' ?>>
+                <?= e($lbl) ?>
+              </option>
+              <?php endforeach; ?>
+              <option value="__custom__" <?= ($current && !isset($models[$current])) ? 'selected' : '' ?>>
+                Customizado…
+              </option>
+            </select>
+            <input type="text" name="model" id="ai_model_input_<?= $prov ?>"
+                   class="form-control mt-2 font-monospace"
+                   placeholder="ID do modelo (ex: gpt-4o, claude-haiku-4-5)"
+                   value="<?= e($current) ?>"
+                   style="<?= ($current && !isset($models[$current])) ? '' : 'display:none' ?>">
+            <div class="invalid-feedback" id="err-ai-model-<?= $prov ?>"></div>
+          </div>
+
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox"
+                   name="is_active" id="ai_active_<?= $prov ?>"
+                   <?= !empty($row['is_active']) ? 'checked' : '' ?>>
+            <label class="form-check-label" for="ai_active_<?= $prov ?>">
+              Habilitar este provider
+            </label>
+          </div>
+
+          <?php if (!empty($err)): ?>
+          <div class="alert alert-danger py-2 small mb-3">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            <strong>Último erro:</strong> <?= e($err) ?>
+          </div>
+          <?php endif; ?>
+
+          <?php if (!empty($row['last_tested_at'])): ?>
+          <div class="small text-muted mb-3">
+            <i class="bi bi-clock-history me-1"></i>
+            Último teste: <?= date('d/m/Y H:i', strtotime($row['last_tested_at'])) ?>
+          </div>
+          <?php endif; ?>
+
+          <div class="d-flex gap-2 flex-wrap">
+            <button type="submit" class="btn btn-primary fw-semibold" id="btn-ai-save-<?= $prov ?>">
+              <span class="spinner-border spinner-border-sm d-none me-2" id="ai-save-spin-<?= $prov ?>"></span>
+              <i class="bi bi-floppy me-2"></i> Salvar
+            </button>
+            <button type="button" class="btn btn-outline-success fw-semibold"
+                    id="btn-ai-test-<?= $prov ?>" onclick="testAiProvider('<?= $prov ?>')">
+              <span class="spinner-border spinner-border-sm d-none me-2" id="ai-test-spin-<?= $prov ?>"></span>
+              <i class="bi bi-plug me-2"></i> Testar conexão
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <?php endforeach; ?>
+</div>
+
+<div class="alert alert-info mt-4 small d-flex gap-2">
+  <i class="bi bi-info-circle-fill mt-1 flex-shrink-0"></i>
+  <div>
+    Os modelos cadastrados aqui ficam disponíveis para uso nos <strong>fluxos automatizados</strong>
+    (nó de IA) e respostas inteligentes. Salve antes de testar a conexão.
+  </div>
+</div>
+
+</div><!-- /tab-ia -->
 
 <!-- ═══════════════════════════════════════════════════════════
      TAB: Atualização (admin only)
@@ -1469,6 +1618,82 @@ document.getElementById('btn-create-apikey')?.addEventListener('click', function
     setTimeout(() => location.reload(), 4000);
   }).catch(() => { this.disabled = false; });
 });
+
+// ─── IA (OpenAI / Anthropic) ─────────────────────────────────
+function onAiModelSelectChange(prov) {
+  var sel = document.getElementById('ai_model_select_' + prov);
+  var inp = document.getElementById('ai_model_input_' + prov);
+  if (!sel || !inp) return;
+  if (sel.value === '__custom__') {
+    inp.style.display = '';
+    inp.value = '';
+    inp.focus();
+  } else {
+    inp.style.display = 'none';
+    inp.value = sel.value;
+  }
+}
+
+document.querySelectorAll('.ai-form').forEach(function (form) {
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var prov  = form.dataset.provider;
+    var btn   = document.getElementById('btn-ai-save-' + prov);
+    var spin  = document.getElementById('ai-save-spin-' + prov);
+    var alert = document.getElementById('ai-alert-' + prov);
+    var err   = document.getElementById('err-ai-model-' + prov);
+
+    if (err) { err.textContent = ''; err.style.display = 'none'; }
+    alert.innerHTML = '';
+
+    // Garante que o input "model" tem o valor correto antes de enviar
+    var sel = document.getElementById('ai_model_select_' + prov);
+    var inp = document.getElementById('ai_model_input_' + prov);
+    if (sel && sel.value && sel.value !== '__custom__') {
+      inp.value = sel.value;
+    }
+
+    btn.disabled = true;
+    spin.classList.remove('d-none');
+
+    Api.formPost(BASE + '/settings/ai', form, function (res) {
+      btn.disabled = false;
+      spin.classList.add('d-none');
+      if (!res) return;
+      if (res.success) {
+        Toast.show(res.message, 'success');
+        alert.innerHTML = mkAlert('success', res.message);
+      } else {
+        Toast.show(res.message, 'danger');
+        if (res.errors && res.errors.model && err) {
+          err.textContent = res.errors.model[0];
+          err.style.display = 'block';
+        }
+        alert.innerHTML = mkAlert('danger', res.message);
+      }
+    });
+  });
+});
+
+function testAiProvider(prov) {
+  var btn   = document.getElementById('btn-ai-test-' + prov);
+  var spin  = document.getElementById('ai-test-spin-' + prov);
+  var alert = document.getElementById('ai-alert-' + prov);
+
+  btn.disabled = true;
+  spin.classList.remove('d-none');
+  alert.innerHTML = '';
+
+  Api.post(BASE + '/settings/ai/test', { provider: prov }).then(function (res) {
+    btn.disabled = false;
+    spin.classList.add('d-none');
+    alert.innerHTML = mkAlert(res.success ? 'success' : 'danger', res.message);
+    Toast.show(res.message, res.success ? 'success' : 'danger');
+  }).catch(function () {
+    btn.disabled = false;
+    spin.classList.add('d-none');
+  });
+}
 </script>
 
 <?php \Core\View::endSection() ?>
