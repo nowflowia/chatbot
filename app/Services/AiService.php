@@ -10,20 +10,22 @@ class AiService
      */
     public const MODELS = [
         'openai' => [
-            'gpt-4o'           => 'GPT-4o',
-            'gpt-4o-mini'      => 'GPT-4o mini',
-            'gpt-4-turbo'      => 'GPT-4 Turbo',
-            'gpt-4'            => 'GPT-4',
-            'gpt-3.5-turbo'    => 'GPT-3.5 Turbo',
-            'o1'               => 'o1',
-            'o1-mini'          => 'o1 mini',
+            'gpt-5'         => 'GPT-5',
+            'gpt-5-mini'    => 'GPT-5 mini',
+            'gpt-5-nano'    => 'GPT-5 nano',
+            'gpt-4.1'       => 'GPT-4.1',
+            'gpt-4.1-mini'  => 'GPT-4.1 mini',
+            'gpt-4.1-nano'  => 'GPT-4.1 nano',
+            'o4-mini'       => 'o4 mini',
+            'o3'            => 'o3',
+            'o3-mini'       => 'o3 mini',
         ],
         'anthropic' => [
-            'claude-opus-4-5'        => 'Claude Opus 4.5',
-            'claude-sonnet-4-5'      => 'Claude Sonnet 4.5',
-            'claude-haiku-4-5'       => 'Claude Haiku 4.5',
-            'claude-3-5-sonnet-latest' => 'Claude 3.5 Sonnet',
-            'claude-3-5-haiku-latest'  => 'Claude 3.5 Haiku',
+            'claude-opus-4-7'    => 'Claude Opus 4.7',
+            'claude-sonnet-4-6'  => 'Claude Sonnet 4.6',
+            'claude-haiku-4-5'   => 'Claude Haiku 4.5',
+            'claude-opus-4-5'    => 'Claude Opus 4.5',
+            'claude-sonnet-4-5'  => 'Claude Sonnet 4.5',
         ],
     ];
 
