@@ -1620,6 +1620,12 @@ document.getElementById('btn-create-apikey')?.addEventListener('click', function
 });
 
 // ─── IA (OpenAI / Anthropic) ─────────────────────────────────
+function aiAlert(type, msg) {
+  return '<div class="alert alert-' + type + ' py-2 small d-flex gap-2 align-items-start">'
+    + '<i class="bi bi-' + (type==='success'?'check':'x') + '-circle-fill mt-1 flex-shrink-0"></i>'
+    + '<span>' + msg + '</span></div>';
+}
+
 function onAiModelSelectChange(prov) {
   var sel = document.getElementById('ai_model_select_' + prov);
   var inp = document.getElementById('ai_model_input_' + prov);
@@ -1656,20 +1662,20 @@ document.querySelectorAll('.ai-form').forEach(function (form) {
     btn.disabled = true;
     spin.classList.remove('d-none');
 
-    Api.formPost(BASE + '/settings/ai', form, function (res) {
+    Api.formPost(API_BASE + '/settings/ai', form, function (res) {
       btn.disabled = false;
       spin.classList.add('d-none');
       if (!res) return;
       if (res.success) {
         Toast.show(res.message, 'success');
-        alert.innerHTML = mkAlert('success', res.message);
+        alert.innerHTML = aiAlert('success', res.message);
       } else {
         Toast.show(res.message, 'danger');
         if (res.errors && res.errors.model && err) {
           err.textContent = res.errors.model[0];
           err.style.display = 'block';
         }
-        alert.innerHTML = mkAlert('danger', res.message);
+        alert.innerHTML = aiAlert('danger', res.message);
       }
     });
   });
@@ -1684,10 +1690,10 @@ function testAiProvider(prov) {
   spin.classList.remove('d-none');
   alert.innerHTML = '';
 
-  Api.post(BASE + '/settings/ai/test', { provider: prov }).then(function (res) {
+  Api.post(API_BASE + '/settings/ai/test', { provider: prov }).then(function (res) {
     btn.disabled = false;
     spin.classList.add('d-none');
-    alert.innerHTML = mkAlert(res.success ? 'success' : 'danger', res.message);
+    alert.innerHTML = aiAlert(res.success ? 'success' : 'danger', res.message);
     Toast.show(res.message, res.success ? 'success' : 'danger');
   }).catch(function () {
     btn.disabled = false;
