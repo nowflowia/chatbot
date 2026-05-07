@@ -82,10 +82,92 @@ class SystemUpdateController extends Controller
         $upToDate   = str_contains($out, 'Already up to date') || str_contains($out, 'Already up-to-date');
         $lastCommit = $this->lastCommit($root);
 
-        $this->jsonSuccess(
-            $upToDate ? 'Sistema já está na versão mais recente.' : 'Sistema atualizado com sucesso!',
-            ['output' => $out, 'last_commit' => $lastCommit]
-        );
+        // Run pending DB migrations in-process (no subprocess required)
+        $migration = $this->runPendingMigrations();
+
+        $msg = $upToDate
+            ? 'Sistema já está na versão mais recente.'
+            : 'Sistema atualizado com sucesso!';
+
+        if ($migration['ran'] > 0) {
+            $msg .= " {$migration['ran']} migration(s) aplicada(s).";
+        } elseif (!empty($migration['error'])) {
+            $msg .= ' Atenção: erro ao aplicar migrations.';
+        }
+
+        $this->jsonSuccess($msg, [
+            'output'      => $out,
+            'last_commit' => $lastCommit,
+            'migrations'  => $migration,
+        ]);
+    }
+
+    // ---------------------------------------------------------------
+    // Run pending DB migrations directly (no shell exec).
+    // Returns ['ran' => int, 'names' => string[], 'error' => ?string]
+    // ---------------------------------------------------------------
+    private function runPendingMigrations(): array
+    {
+        $result = ['ran' => 0, 'names' => [], 'error' => null];
+        $root   = $this->projectRoot();
+        $dir    = $root . '/database/migrations';
+
+        if (!is_dir($dir)) {
+            return $result;
+        }
+
+        try {
+            $db = \Core\Database::getInstance();
+
+            $db->statement("
+                CREATE TABLE IF NOT EXISTS `migrations` (
+                    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    `migration` VARCHAR(255) NOT NULL,
+                    `batch` INT NOT NULL DEFAULT 1,
+                    `ran_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+
+            $ran   = array_column(
+                $db->select("SELECT migration FROM migrations ORDER BY id ASC"),
+                'migration'
+            );
+
+            $files = glob($dir . '/*.php') ?: [];
+            sort($files);
+
+            $batch = (int)($db->selectOne("SELECT MAX(batch) AS b FROM migrations")['b'] ?? 0) + 1;
+
+            foreach ($files as $file) {
+                $name = pathinfo($file, PATHINFO_FILENAME);
+                if (in_array($name, $ran, true)) continue;
+
+                require_once $file;
+
+                // Pattern: 2024_01_01_000001_create_something_table → CreateSomethingTable
+                $parts = explode('_', $name);
+                $classParts = count($parts) > 4 ? array_slice($parts, 4) : $parts;
+                $class = implode('', array_map('ucfirst', $classParts));
+
+                if (!class_exists($class)) {
+                    logger("[migrate] Class not found: {$class} in {$name}", 'warning');
+                    continue;
+                }
+
+                (new $class())->up();
+                $db->insert(
+                    "INSERT INTO migrations (migration, batch) VALUES (?, ?)",
+                    [$name, $batch]
+                );
+                $result['ran']++;
+                $result['names'][] = $name;
+            }
+        } catch (\Throwable $e) {
+            logger('[migrate] ' . $e->getMessage(), 'error');
+            $result['error'] = $e->getMessage();
+        }
+
+        return $result;
     }
 
     // ---------------------------------------------------------------

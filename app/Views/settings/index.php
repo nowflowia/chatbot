@@ -1479,7 +1479,17 @@ window.runSystemPull = function () {
     .then(res => {
       btn.disabled = false; spin.classList.add('d-none');
       icon.style.display = ''; txt.textContent = 'Atualizar Agora';
-      if (res.data?.output) { output.textContent = res.data.output; outCard.style.display = ''; }
+      // Build combined output: git pull + migrations
+      var combinedOut = res.data?.output || '';
+      var mig = res.data?.migrations;
+      if (mig) {
+        if (mig.ran > 0) {
+          combinedOut += '\n\n— Migrations aplicadas —\n' + mig.names.join('\n');
+        } else if (mig.error) {
+          combinedOut += '\n\n— Erro ao aplicar migrations —\n' + mig.error;
+        }
+      }
+      if (combinedOut) { output.textContent = combinedOut; outCard.style.display = ''; }
       alert.style.display = '';
       if (res.success) {
         alert.innerHTML = '<div class="alert alert-success py-2 small d-flex gap-2"><i class="bi bi-check-circle-fill text-success mt-1"></i><span>' + res.message + ' Recarregando em 3 segundos…</span></div>';
