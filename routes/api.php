@@ -8,6 +8,9 @@ use Core\Router;
 $router->get('/webhook',  ['App\Controllers\WebhookController', 'verify']);
 $router->post('/webhook', ['App\Controllers\WebhookController', 'receive']);
 
+// ── License verification (public — installed on the license server) ─
+$router->get('/license/verify', ['App\Controllers\LicenseVerifyController', 'verify']);
+
 // ── Public API ────────────────────────────────────────────────────
 $router->group(['prefix' => 'api/v1'], function (Router $router) {
 
