@@ -21,9 +21,10 @@ function isGroupOpen(array $segments): bool {
 $avatarColors = ['#6366f1','#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#0ea5e9'];
 $avatarBg     = $avatarColors[ord(($authUser['name'] ?? 'U')[0]) % count($avatarColors)];
 
-$chatOpen  = isGroupOpen(['/chat', 'queue', 'flow']);
-$crmOpen   = isGroupOpen(['/crm']);
-$adminOpen = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config', 'license']);
+$chatOpen       = isGroupOpen(['/chat', 'queue', 'flow']);
+$conversasOpen  = isGroupOpen(['/conversations']);
+$crmOpen        = isGroupOpen(['/crm']);
+$adminOpen      = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config', 'license', 'whatsapp']);
 ?>
 <!-- Sidebar overlay (mobile) -->
 <div id="sidebar-overlay" class="sidebar-overlay"></div>
@@ -80,6 +81,26 @@ $adminOpen = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config', 'lic
           <a href="<?= url('admin/flows') ?>" class="nav-link nav-sub<?= isActive('flow') ?>">
             <i class="bi bi-diagram-3-fill"></i>
             <span class="link-label">Fluxos</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- ── Conversas ─────────────────────────────── -->
+    <div class="nav-group">
+      <button class="nav-group-toggle<?= $conversasOpen ? ' open' : '' ?>"
+              data-target="group-conversas" type="button">
+        <span class="d-flex align-items-center gap-2">
+          <i class="bi bi-whatsapp"></i>
+          <span class="link-label">Conversas</span>
+        </span>
+        <i class="bi bi-chevron-right nav-group-arrow"></i>
+      </button>
+      <ul class="nav flex-column nav-group-items<?= $conversasOpen ? ' show' : '' ?>" id="group-conversas">
+        <li>
+          <a href="<?= url('admin/conversations/active') ?>" class="nav-link nav-sub<?= isActive('/conversations/active') ?>">
+            <i class="bi bi-send-fill"></i>
+            <span class="link-label">Ativo</span>
           </a>
         </li>
       </ul>
@@ -151,6 +172,12 @@ $adminOpen = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config', 'lic
           </a>
         </li>
         <?php if (\Core\Auth::isAdmin()): ?>
+        <li>
+          <a href="<?= url('admin/whatsapp') ?>" class="nav-link nav-sub<?= isActive('/whatsapp') ?>">
+            <i class="bi bi-whatsapp text-success"></i>
+            <span class="link-label">WhatsApp</span>
+          </a>
+        </li>
         <li>
           <a href="<?= url('admin/ai-config') ?>" class="nav-link nav-sub<?= isActive('ai-config') ?>">
             <i class="bi bi-stars" style="color:#a855f7;"></i>

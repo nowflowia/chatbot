@@ -209,6 +209,35 @@ class MetaWhatsAppService
     }
 
     /**
+     * Create a new message template in the Meta Business Account.
+     */
+    public function createTemplate(array $data): array
+    {
+        $waba = $this->settings['business_account_id'] ?? '';
+        $payload = [
+            'name'       => $data['name'],
+            'language'   => $data['language'] ?? 'pt_BR',
+            'category'   => strtoupper($data['category']), // MARKETING, UTILITY, SERVICE
+            'components' => [],
+        ];
+
+        if (!empty($data['header_text'])) {
+            $payload['components'][] = ['type' => 'HEADER', 'format' => 'TEXT', 'text' => $data['header_text']];
+        }
+        if (!empty($data['body_text'])) {
+            $payload['components'][] = ['type' => 'BODY', 'text' => $data['body_text']];
+        }
+        if (!empty($data['footer_text'])) {
+            $payload['components'][] = ['type' => 'FOOTER', 'text' => $data['footer_text']];
+        }
+        if (!empty($data['buttons']) && is_array($data['buttons'])) {
+            $payload['components'][] = ['type' => 'BUTTONS', 'buttons' => $data['buttons']];
+        }
+
+        return $this->request('POST', "/{$waba}/message_templates", $payload);
+    }
+
+    /**
      * Test the connection — returns ['ok' => bool, 'message' => string, 'data' => array].
      */
     public function testConnection(): array

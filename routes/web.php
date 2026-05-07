@@ -153,4 +153,16 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     // CRM board & main
     $router->get('/crm/board/{pipelineId}', ['App\Controllers\CrmController', 'board'])->middleware('feature:crm');
     $router->get('/crm', ['App\Controllers\CrmController', 'index'])->middleware('feature:crm');
+
+    // ── WhatsApp Admin ─────────────────────────────────────────────
+    $router->get('/whatsapp',                                ['App\Controllers\WhatsAppAdminController', 'index']);
+    $router->post('/whatsapp/templates',                     ['App\Controllers\WhatsAppAdminController', 'store']);
+    $router->post('/whatsapp/templates/{id}/delete',         ['App\Controllers\WhatsAppAdminController', 'destroy']);
+    $router->post('/whatsapp/templates/{id}/submit',         ['App\Controllers\WhatsAppAdminController', 'submit']);
+    $router->post('/whatsapp/sync',                          ['App\Controllers\WhatsAppAdminController', 'syncFromMeta']);
+
+    // ── Conversations ──────────────────────────────────────────────
+    $router->get('/conversations/active',                    ['App\Controllers\ConversationController', 'active']);
+    $router->post('/conversations/send',                     ['App\Controllers\ConversationController', 'send']);
+    $router->post('/conversations/search-contact',           ['App\Controllers\ConversationController', 'searchContact']);
 });
