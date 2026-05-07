@@ -136,7 +136,8 @@ class WebhookController extends Controller
         $contact = $db->selectOne("SELECT * FROM contacts WHERE phone = ? LIMIT 1", [$phone]);
         if (!$contact) {
             $contactId = $db->insert(
-                "INSERT INTO contacts (phone, name, whatsapp_id, status, created_at, updated_at) VALUES (?, ?, ?, 'active', NOW(), NOW())",
+                "INSERT INTO contacts (phone, name, whatsapp_id, status, opt_in_status, opted_in_at, created_at, updated_at)
+                 VALUES (?, ?, ?, 'active', 'opted_in', NOW(), NOW(), NOW())",
                 [$phone, $name ?: $phone, $phone]
             );
         } else {
@@ -144,6 +145,40 @@ class WebhookController extends Controller
             if ($name && (!$contact['name'] || $contact['name'] === $phone)) {
                 $db->update("UPDATE contacts SET name = ?, updated_at = NOW() WHERE id = ?", [$name, $contactId]);
             }
+        }
+
+        // ── Opt-in / opt-out tracking ────────────────────────────
+        // Detect opt-out keywords first (PARAR, SAIR, STOP, etc.)
+        // even from already-opted-in contacts.
+        $optOutKws = ['parar', 'pare', 'sair', 'cancelar', 'descadastrar', 'stop', 'unsubscribe'];
+        $matchedKw = null;
+        if (!empty($text)) {
+            $low = mb_strtolower(trim((string)$text));
+            // Match only if message is short and contains the keyword
+            if (mb_strlen($low) <= 30) {
+                foreach ($optOutKws as $kw) {
+                    if ($low === $kw || str_contains($low, $kw)) { $matchedKw = $kw; break; }
+                }
+            }
+        }
+
+        if ($matchedKw) {
+            $db->update(
+                "UPDATE contacts SET opt_in_status='opted_out', opted_out_at=NOW(),
+                                     opt_out_keyword=?, updated_at=NOW() WHERE id=?",
+                [$matchedKw, $contactId]
+            );
+        } else {
+            // Implicit opt-in for any inbound message — refreshes timestamp if not opted-out
+            $db->update(
+                "UPDATE contacts
+                 SET opt_in_status='opted_in',
+                     opted_in_at = COALESCE(opted_in_at, NOW()),
+                     opted_out_at = NULL, opt_out_keyword = NULL,
+                     updated_at = NOW()
+                 WHERE id=? AND opt_in_status <> 'opted_out'",
+                [$contactId]
+            );
         }
 
         // Find or create open chat

@@ -42,6 +42,7 @@
       ['type'=>'transfer',  'icon'=>'person-lines-fill','label'=>'Transferir', 'color'=>'#10b981'],
       ['type'=>'wait',      'icon'=>'hourglass-split',  'label'=>'Aguardar',   'color'=>'#14b8a6'],
       ['type'=>'api_call',  'icon'=>'cloud-arrow-up',   'label'=>'API Call',   'color'=>'#ec4899'],
+      ['type'=>'ai',        'icon'=>'stars',            'label'=>'IA',         'color'=>'#a855f7'],
       ['type'=>'finish',    'icon'=>'check-circle',     'label'=>'Finalizar',  'color'=>'#ef4444'],
     ];
     foreach ($nodeTypes as $t):
@@ -158,6 +159,36 @@
         <label class="form-label form-label-sm fw-semibold">Salvar resposta em</label>
         <input type="text" id="cfg-api-var" class="form-control form-control-sm"
                placeholder="api_response">
+      </div>
+
+      <!-- ai config -->
+      <div id="cfg-ai" class="cfg-section d-none">
+        <label class="form-label form-label-sm fw-semibold">Instrução adicional (opcional)</label>
+        <textarea id="cfg-ai-extra" class="form-control form-control-sm mb-2" rows="3"
+                  placeholder="Ex: nesta etapa, foque em descobrir o problema do cliente antes de oferecer solução."></textarea>
+        <div class="form-text mb-2">
+          A persona, Q&A, documentos e sites configurados em <strong>IA Config</strong>
+          são incluídos automaticamente no contexto.
+        </div>
+
+        <label class="form-label form-label-sm fw-semibold mt-2">Palavra-chave para sair</label>
+        <input type="text" id="cfg-ai-exit" class="form-control form-control-sm"
+               placeholder="atendente, humano, falar com pessoa">
+        <div class="form-text mb-2">
+          Se o usuário mandar uma dessas palavras, o fluxo segue para o próximo bloco.
+        </div>
+
+        <label class="form-label form-label-sm fw-semibold mt-2">Limite de turnos</label>
+        <input type="number" id="cfg-ai-max-turns" class="form-control form-control-sm"
+               min="1" max="50" value="20">
+        <div class="form-text">Após N mensagens, sai do bloco automaticamente.</div>
+
+        <div class="form-check form-switch mt-2">
+          <input class="form-check-input" type="checkbox" id="cfg-ai-multi-turn" checked>
+          <label class="form-check-label" for="cfg-ai-multi-turn">
+            Conversa contínua (multi-turn)
+          </label>
+        </div>
       </div>
 
       <!-- finish config -->
@@ -449,6 +480,7 @@ const NODE_META = {
   transfer:  { icon: 'bi-person-lines-fill',label:'Transferir', color: '#10b981' },
   wait:      { icon: 'bi-hourglass-split', label: 'Aguardar',   color: '#14b8a6' },
   api_call:  { icon: 'bi-cloud-arrow-up',  label: 'API Call',   color: '#ec4899' },
+  ai:        { icon: 'bi-stars',           label: 'IA',         color: '#a855f7' },
   finish:    { icon: 'bi-check-circle',    label: 'Finalizar',  color: '#ef4444' },
 };
 
@@ -802,6 +834,12 @@ function openInspector(id) {
     document.getElementById('cfg-api-var').value    = cfg.variable || '';
   }
   if (n.type === 'finish') document.getElementById('cfg-finish-msg').value = cfg.message || '';
+  if (n.type === 'ai') {
+    document.getElementById('cfg-ai-extra').value      = cfg.extra_instruction || '';
+    document.getElementById('cfg-ai-exit').value       = cfg.exit_keyword || '';
+    document.getElementById('cfg-ai-max-turns').value  = cfg.max_turns || 20;
+    document.getElementById('cfg-ai-multi-turn').checked = cfg.multi_turn !== false;
+  }
 }
 
 function closeInspector() {
@@ -846,6 +884,12 @@ document.getElementById('btn-apply-inspector').addEventListener('click', () => {
     cfg.variable = document.getElementById('cfg-api-var').value;
   }
   if (n.type === 'finish') cfg.message = document.getElementById('cfg-finish-msg').value;
+  if (n.type === 'ai') {
+    cfg.extra_instruction = document.getElementById('cfg-ai-extra').value.trim();
+    cfg.exit_keyword      = document.getElementById('cfg-ai-exit').value.trim();
+    cfg.max_turns         = parseInt(document.getElementById('cfg-ai-max-turns').value) || 20;
+    cfg.multi_turn        = document.getElementById('cfg-ai-multi-turn').checked;
+  }
 
   n.config = cfg;
   render();

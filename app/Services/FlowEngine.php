@@ -258,6 +258,80 @@ class FlowEngine
                 if ($next) $this->executeNode($next, $depth + 1);
                 break;
 
+            case 'ai':
+                $userInput = (string)($this->vars['_last_input'] ?? '');
+                $extra     = (string)($cfg['extra_instruction'] ?? '');
+                $exitKw    = (string)($cfg['exit_keyword']      ?? '');
+                $maxTurns  = max(1, (int)($cfg['max_turns']     ?? 20));
+                $multiTurn = !isset($cfg['multi_turn']) || (bool)$cfg['multi_turn'];
+
+                $turnsKey = '_ai_turns_' . $node['id'];
+                $turns    = (int)($this->vars[$turnsKey] ?? 0) + 1;
+
+                // Check exit keyword + max turns
+                $shouldExit = false;
+                if ($exitKw !== '' && $userInput !== '') {
+                    $low = mb_strtolower($userInput);
+                    foreach (preg_split('/[,;|]/', mb_strtolower($exitKw)) ?: [] as $kw) {
+                        $kw = trim($kw);
+                        if ($kw !== '' && str_contains($low, $kw)) { $shouldExit = true; break; }
+                    }
+                }
+                if ($turns > $maxTurns) $shouldExit = true;
+
+                if ($shouldExit) {
+                    unset($this->vars[$turnsKey]);
+                    $this->saveVars();
+                    $this->clearCurrentNode();
+                    $next = $this->getNextNode($node['id'], null);
+                    if ($next) $this->executeNode($next, $depth + 1);
+                    break;
+                }
+
+                // Call AI with knowledge base context
+                if ($userInput !== '') {
+                    try {
+                        $service = new \App\Services\AiService();
+                        $context = $service->buildKnowledgeContext();
+                        if ($extra !== '') {
+                            $context .= "\n\n## Instrução adicional para esta etapa\n" . $extra;
+                        }
+                        $reply = $service->ask($userInput, $context);
+                        $reply = trim((string)$reply);
+                        if ($reply !== '') {
+                            $this->send($reply);
+                            $this->saveOutboundMessage($reply);
+                        }
+                    } catch (\Throwable $e) {
+                        logger('FlowEngine ai error: ' . $e->getMessage(), 'error');
+                        $msg = 'Desculpe, estou com dificuldade em responder agora. Vou transferir para um atendente.';
+                        $this->send($msg);
+                        $this->saveOutboundMessage($msg);
+                        // Fallback: hand off to queue
+                        $this->db->update(
+                            "UPDATE chats SET is_bot_active = 0, status = 'waiting', current_node_id = NULL, updated_at = ? WHERE id = ?",
+                            [now(), $this->chat['id']]
+                        );
+                        unset($this->vars[$turnsKey]);
+                        $this->saveVars();
+                        break;
+                    }
+                }
+
+                $this->vars[$turnsKey] = $turns;
+                $this->saveVars();
+
+                if ($multiTurn) {
+                    $this->setCurrentNode($node['id']);
+                } else {
+                    unset($this->vars[$turnsKey]);
+                    $this->saveVars();
+                    $this->clearCurrentNode();
+                    $next = $this->getNextNode($node['id'], null);
+                    if ($next) $this->executeNode($next, $depth + 1);
+                }
+                break;
+
             case 'finish':
                 $msg = $this->interpolate($cfg['message'] ?? 'Atendimento encerrado. Até logo!');
                 if ($msg) {
@@ -297,6 +371,14 @@ class FlowEngine
             $this->vars['_last_input']     = $choice ?: $input;
             $this->vars['_list_selection'] = $choice ?: $input;
             $this->saveVars();
+        }
+
+        // AI multi-turn: re-execute the same node with the new user input
+        if ($type === 'ai') {
+            $this->vars['_last_input'] = $input;
+            $this->saveVars();
+            $this->executeNode($waitNode);
+            return;
         }
 
         $this->clearCurrentNode();
