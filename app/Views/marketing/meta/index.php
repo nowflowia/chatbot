@@ -422,6 +422,16 @@ function doSend(message, brief) {
     .catch(()=>{ setLoading(false); document.getElementById(thinkId)?.remove(); Toast.show('Erro de conexão.','error'); });
 }
 
+// ── Action store — avoids escaping issues in onclick attributes ───────
+const actionStore = {};
+let actionStoreSeq = 0;
+
+function storeAction(action) {
+  const key = 'act_' + (++actionStoreSeq);
+  actionStore[key] = action;
+  return key;
+}
+
 // ── Bubble rendering ──────────────────────────────────────────────────
 
 function appendBubble(role, content, actions, isSystem, isError) {
@@ -430,24 +440,30 @@ function appendBubble(role, content, actions, isSystem, isError) {
 
   let actionsHtml = '';
   if (actions && actions.length) {
-    actionsHtml = `<div class="mt-2 pt-2 border-top">
-      <div class="small fw-semibold text-warning mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Ações propostas — revise antes de aprovar:</div>
-      ${actions.map((a,i) => `
-        <div class="border rounded p-2 mb-2 bg-white" style="font-size:.82rem;">
-          <div class="fw-semibold mb-1">${actionTypeLabel(a.type)} <span class="text-muted fw-normal">— ${escHtml(a.description||'')}</span></div>
+    const cards = actions.map(a => {
+      const key  = storeAction(a);
+      const desc = escHtml(a.description || a.type || '');
+      const pre  = escHtml(JSON.stringify(a.data || {}, null, 2));
+      return `<div class="border rounded p-2 mb-2 bg-white" style="font-size:.82rem;" data-action-key="${key}">
+          <div class="fw-semibold mb-1">${actionTypeLabel(a.type)} <span class="text-muted fw-normal">— ${desc}</span></div>
           <details class="mb-2">
             <summary class="text-muted small" style="cursor:pointer;">Ver detalhes técnicos</summary>
-            <pre class="small bg-light p-2 rounded mt-1 mb-0" style="white-space:pre-wrap;font-size:.72rem;">${escHtml(JSON.stringify(a.data||{},null,2))}</pre>
+            <pre class="small bg-light p-2 rounded mt-1 mb-0" style="white-space:pre-wrap;font-size:.72rem;">${pre}</pre>
           </details>
           <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-success fw-semibold" onclick="approveAction(this,'${escHtml(a.type)}',${escHtml(JSON.stringify(a.data||{}))})">
+            <button class="btn btn-sm btn-success fw-semibold" onclick="approveAction(this,'${key}')">
               <i class="bi bi-check-lg me-1"></i>Aprovar e Executar
             </button>
-            <button class="btn btn-sm btn-outline-danger" onclick="rejectAction(this,'${escHtml(a.description||a.type)}')">
+            <button class="btn btn-sm btn-outline-danger" onclick="rejectAction(this,'${key}')">
               <i class="bi bi-x-lg me-1"></i>Rejeitar
             </button>
           </div>
-        </div>`).join('')}
+        </div>`;
+    }).join('');
+
+    actionsHtml = `<div class="mt-2 pt-2 border-top">
+      <div class="small fw-semibold text-warning mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Ações propostas — revise antes de aprovar:</div>
+      ${cards}
     </div>`;
   }
 
@@ -465,7 +481,13 @@ function appendBubble(role, content, actions, isSystem, isError) {
 
 // ── Action approval ───────────────────────────────────────────────────
 
-function approveAction(btn, type, data) {
+function approveAction(btn, key) {
+  const action = actionStore[key];
+  if (!action) { Toast.show('Ação não encontrada.', 'error'); return; }
+
+  const type = action.type;
+  const data = action.data || {};
+
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Executando…';
 
@@ -479,19 +501,31 @@ function approveAction(btn, type, data) {
   })
     .then(r=>r.json())
     .then(res => {
-      const card = btn.closest('.border.rounded.p-2.mb-2');
+      const card = btn.closest('[data-action-key]');
       if (res.success) {
         btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Executado!';
         btn.className = 'btn btn-sm btn-success disabled';
-        card.style.background = '#f0fdf4';
+        if (card) card.style.background = '#f0fdf4';
         Toast.show('Ação executada com sucesso!', 'success');
 
         if (type === 'generate_image' && res.data?.images?.length) {
-          const imgs = res.data.images;
-          const imgHtml = imgs.map(url =>
-            `<div class="mt-2"><img src="${escHtml(url)}" class="rounded border" style="max-width:100%;max-height:280px;object-fit:cover;" /><div class="mt-1"><a href="${escHtml(url)}" target="_blank" class="btn btn-xs btn-outline-secondary btn-sm py-0 px-2" style="font-size:.72rem;"><i class="bi bi-box-arrow-up-right me-1"></i>Abrir URL</a><button class="btn btn-xs btn-outline-primary btn-sm py-0 px-2 ms-1" style="font-size:.72rem;" onclick="copyUrl('${escHtml(url)}')"><i class="bi bi-clipboard me-1"></i>Copiar URL</button></div></div>`
-          ).join('');
-          appendBubble('assistant', `✅ **Imagem gerada!** Use a URL abaixo no criativo do anúncio:${imgHtml}`, []);
+          const wrap = document.createElement('div');
+          wrap.className = 'mt-2';
+          res.data.images.forEach(url => {
+            const img   = document.createElement('img');
+            img.src     = url;
+            img.className = 'rounded border d-block mb-1';
+            img.style.cssText = 'max-width:100%;max-height:280px;object-fit:cover;';
+            const row   = document.createElement('div');
+            row.className = 'd-flex gap-1 mb-2';
+            row.innerHTML =
+              `<a href="${escHtml(url)}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.72rem;"><i class="bi bi-box-arrow-up-right me-1"></i>Abrir</a>` +
+              `<button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.72rem;" onclick="copyUrl(this,'${escHtml(url)}')"><i class="bi bi-clipboard me-1"></i>Copiar URL</button>`;
+            wrap.appendChild(img);
+            wrap.appendChild(row);
+          });
+          if (card) card.appendChild(wrap);
+          appendBubble('assistant', '✅ **Imagem gerada!** Confirme para usar no criativo do anúncio.', []);
         } else {
           appendBubble('assistant', `✅ **${actionTypeLabel(type)}** executada com sucesso.\nID Meta: ${res.data?.meta_result?.id || 'N/A'}`, []);
         }
@@ -507,11 +541,12 @@ function approveAction(btn, type, data) {
     .catch(()=>{ btn.disabled=false; btn.innerHTML='<i class="bi bi-check-lg me-1"></i>Aprovar e Executar'; Toast.show('Erro de conexão.','error'); });
 }
 
-function rejectAction(btn, desc) {
-  const card = btn.closest('.border.rounded.p-2.mb-2');
-  card.style.opacity = '0.5';
+function rejectAction(btn, key) {
+  const action = actionStore[key];
+  const desc   = action ? (action.description || action.type) : key;
+  const card   = btn.closest('[data-action-key]');
+  if (card) card.style.opacity = '0.5';
   btn.closest('.d-flex').innerHTML = '<span class="text-danger small"><i class="bi bi-x-circle me-1"></i>Ação rejeitada pelo usuário</span>';
-  // Inform agent
   doSend(`Rejeitei a ação: ${desc}. Por favor, sugira uma alternativa ou ajuste.`, {});
 }
 
@@ -543,8 +578,11 @@ function actionTypeLabel(type) {
   }[type] || type;
 }
 
-function copyUrl(url) {
-  navigator.clipboard.writeText(url).then(() => Toast.show('URL copiada!', 'success'));
+function copyUrl(btn, url) {
+  navigator.clipboard.writeText(url).then(() => {
+    btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Copiado!';
+    setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard me-1"></i>Copiar URL'; }, 2000);
+  });
 }
 
 function markdownToHtml(text) {
