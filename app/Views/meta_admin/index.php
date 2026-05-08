@@ -165,6 +165,47 @@ $stMap = [
       </div>
     </div>
 
+    <!-- Image Generation -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body px-4 py-3">
+        <h6 class="fw-bold mb-2">
+          <i class="bi bi-image-fill text-primary me-2"></i>Geração de Imagens via IA
+          <?php if ($openaiOk ?? false): ?>
+          <span class="badge bg-success ms-1 fw-normal" style="font-size:.65rem;">Ativo</span>
+          <?php else: ?>
+          <span class="badge bg-warning text-dark ms-1 fw-normal" style="font-size:.65rem;">Não configurado</span>
+          <?php endif; ?>
+        </h6>
+        <p class="text-muted small mb-3">
+          O agente usa <strong>gpt-image-1</strong> (OpenAI) para criar as imagens dos anúncios.
+          Claude propõe o conceito visual → você aprova → imagem gerada automaticamente → usada no criativo.
+        </p>
+        <div id="openai-alert"></div>
+        <div class="mb-2">
+          <label class="form-label fw-semibold small">OpenAI API Key</label>
+          <div class="input-group">
+            <input type="password" id="openai-key-input" class="form-control font-monospace"
+                   value="<?= e($openaiKey ?? '') ?>" placeholder="sk-proj-...">
+            <button class="btn btn-outline-secondary" type="button"
+                    onclick="toggleKeyVis()"><i class="bi bi-eye" id="eye-icon"></i></button>
+          </div>
+          <div class="form-text">Obtenha em <strong>platform.openai.com → API keys</strong></div>
+        </div>
+        <button class="btn btn-primary btn-sm w-100 fw-semibold" onclick="saveOpenAiKey()">
+          <span class="spinner-border spinner-border-sm d-none me-1" id="oai-spin"></span>
+          <i class="bi bi-floppy me-1" id="oai-icon"></i>Salvar chave OpenAI
+        </button>
+        <div class="mt-3 pt-2 border-top">
+          <div class="small text-muted fw-semibold mb-1">Formatos gerados:</div>
+          <div class="d-flex flex-column gap-1">
+            <div class="small text-muted"><code>1024×1024</code> — Feed quadrado (FB/IG)</div>
+            <div class="small text-muted"><code>1024×1536</code> — Portrait (Stories/Reels)</div>
+            <div class="small text-muted"><code>1536×1024</code> — Landscape (banners)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card border-0 shadow-sm">
       <div class="card-body px-4 py-3">
         <h6 class="fw-bold mb-2"><i class="bi bi-shield-check text-success me-2"></i>Permissões necessárias</h6>
@@ -183,8 +224,9 @@ $stMap = [
 <?php \Core\View::section('scripts') ?>
 <script>
 const META_ADMIN = {
-  save: '<?= url('admin/meta/settings') ?>',
-  test: '<?= url('admin/meta/test') ?>',
+  save:      '<?= url('admin/meta/settings') ?>',
+  test:      '<?= url('admin/meta/test') ?>',
+  openaiKey: '<?= url('admin/meta/openai-key') ?>',
 };
 function saveMetaSettings() {
   toggle('save', true);
@@ -212,5 +254,36 @@ function toggle(id, loading) {
   document.getElementById(id+'-icon').classList.toggle('d-none', loading);
 }
 function escHtml(s) { const d=document.createElement('div'); d.appendChild(document.createTextNode(String(s))); return d.innerHTML; }
+
+function saveOpenAiKey() {
+  const spin = document.getElementById('oai-spin');
+  const icon = document.getElementById('oai-icon');
+  spin.classList.remove('d-none'); icon.classList.add('d-none');
+  document.getElementById('openai-alert').innerHTML = '';
+  const fd = new FormData();
+  fd.append('_csrf_token', '<?= csrf_token() ?>');
+  fd.append('api_key', document.getElementById('openai-key-input').value);
+  fetch(META_ADMIN.openaiKey, { method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'} })
+    .then(r=>r.json())
+    .then(res=>{
+      spin.classList.add('d-none'); icon.classList.remove('d-none');
+      if (res.success) {
+        document.getElementById('openai-alert').innerHTML =
+          `<div class="alert alert-success py-2 small mb-2"><i class="bi bi-check-circle-fill me-1"></i>${escHtml(res.message)}</div>`;
+        setTimeout(()=>location.reload(), 1200);
+      } else {
+        Toast.show(res.message, 'error');
+      }
+    })
+    .catch(()=>{ spin.classList.add('d-none'); icon.classList.remove('d-none'); Toast.show('Erro de conexão.','error'); });
+}
+
+function toggleKeyVis() {
+  const inp  = document.getElementById('openai-key-input');
+  const icon = document.getElementById('eye-icon');
+  const isPass = inp.type === 'password';
+  inp.type = isPass ? 'text' : 'password';
+  icon.className = isPass ? 'bi bi-eye-slash' : 'bi bi-eye';
+}
 </script>
 <?php \Core\View::endSection() ?>

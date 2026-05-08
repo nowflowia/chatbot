@@ -485,7 +485,16 @@ function approveAction(btn, type, data) {
         btn.className = 'btn btn-sm btn-success disabled';
         card.style.background = '#f0fdf4';
         Toast.show('Ação executada com sucesso!', 'success');
-        appendBubble('assistant', `✅ **${actionTypeLabel(type)}** executada com sucesso.\nID Meta: ${res.data?.meta_result?.id || 'N/A'}`, []);
+
+        if (type === 'generate_image' && res.data?.images?.length) {
+          const imgs = res.data.images;
+          const imgHtml = imgs.map(url =>
+            `<div class="mt-2"><img src="${escHtml(url)}" class="rounded border" style="max-width:100%;max-height:280px;object-fit:cover;" /><div class="mt-1"><a href="${escHtml(url)}" target="_blank" class="btn btn-xs btn-outline-secondary btn-sm py-0 px-2" style="font-size:.72rem;"><i class="bi bi-box-arrow-up-right me-1"></i>Abrir URL</a><button class="btn btn-xs btn-outline-primary btn-sm py-0 px-2 ms-1" style="font-size:.72rem;" onclick="copyUrl('${escHtml(url)}')"><i class="bi bi-clipboard me-1"></i>Copiar URL</button></div></div>`
+          ).join('');
+          appendBubble('assistant', `✅ **Imagem gerada!** Use a URL abaixo no criativo do anúncio:${imgHtml}`, []);
+        } else {
+          appendBubble('assistant', `✅ **${actionTypeLabel(type)}** executada com sucesso.\nID Meta: ${res.data?.meta_result?.id || 'N/A'}`, []);
+        }
         scrollChat();
       } else {
         btn.disabled = false;
@@ -523,6 +532,7 @@ function refreshInsights(id) {
 
 function actionTypeLabel(type) {
   return {
+    generate_image:   '🖼️ Gerar Imagem IA',
     create_campaign:  '📣 Criar Campanha',
     create_adset:     '🎯 Criar Conjunto de Anúncios',
     create_creative:  '🎨 Criar Criativo',
@@ -531,6 +541,10 @@ function actionTypeLabel(type) {
     pause_campaign:   '⏸️ Pausar Campanha',
     fetch_insights:   '📊 Buscar Métricas',
   }[type] || type;
+}
+
+function copyUrl(url) {
+  navigator.clipboard.writeText(url).then(() => Toast.show('URL copiada!', 'success'));
 }
 
 function markdownToHtml(text) {

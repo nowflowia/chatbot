@@ -8,6 +8,7 @@ use Core\Auth;
 use Core\Database;
 use App\Services\MetaAdsService;
 use App\Services\MetaAgentService;
+use App\Services\ImageGenerationService;
 
 class MetaMarketingController extends Controller
 {
@@ -129,6 +130,29 @@ class MetaMarketingController extends Controller
         $result   = [];
 
         switch ($type) {
+            case 'generate_image':
+                $imgService = new ImageGenerationService();
+                if (!$imgService->isConfigured()) {
+                    $this->appendAgentMessage($db, (int)$id, '⚠️ OpenAI API Key não configurada. Vá em Administração → META → Geração de Imagens.');
+                    $this->jsonError('OpenAI API Key não configurada.', [], 422);
+                }
+                $imgResult = $imgService->generate(
+                    $dataRaw['prompt'] ?? '',
+                    $dataRaw['size']   ?? '1024x1024'
+                );
+                if (isset($imgResult['error'])) {
+                    $this->appendAgentMessage($db, (int)$id, '⚠️ Falha ao gerar imagem: ' . $imgResult['error']);
+                    $this->jsonError($imgResult['error'], [], 422);
+                }
+                $imageUrls = $imgResult['images'] ?? [];
+                $urlList   = implode("\n", $imageUrls);
+                $this->appendAgentMessage($db, (int)$id,
+                    "✅ Imagem gerada com sucesso! URL para usar no criativo:\n{$urlList}\n\n" .
+                    "Agora posso criar o criativo do anúncio usando essa imagem. Deseja prosseguir?"
+                );
+                $this->jsonSuccess('Imagem gerada!', ['images' => $imageUrls]);
+                return;
+
             case 'create_campaign':
                 $result = $service->createCampaign($dataRaw);
                 if (!isset($result['error']) && !empty($result['id'])) {

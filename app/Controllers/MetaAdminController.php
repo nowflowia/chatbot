@@ -21,10 +21,13 @@ class MetaAdminController extends Controller
     public function index(Request $request): string
     {
         $this->requireAdmin();
-        $ai = AiSetting::get('anthropic');
+        $ai     = AiSetting::get('anthropic');
+        $openai = AiSetting::get('openai');
         return $this->view('meta_admin/index', [
-            'settings'    => MetaAdSetting::getActive() ?? [],
-            'aiConfigured' => !empty($ai['api_key']),
+            'settings'      => MetaAdSetting::getActive() ?? [],
+            'aiConfigured'  => !empty($ai['api_key']),
+            'openaiKey'     => !empty($openai['api_key']) ? substr($openai['api_key'], 0, 7) . '••••••••••••' : '',
+            'openaiOk'      => !empty($openai['api_key']),
         ]);
     }
 
@@ -46,6 +49,16 @@ class MetaAdminController extends Controller
         ]);
 
         $this->jsonSuccess('Configurações salvas!');
+    }
+
+    // ── POST /admin/meta/openai-key ──────────────────────────────
+
+    public function saveOpenAiKey(Request $request): void
+    {
+        $this->requireAdmin();
+        $key = trim((string) $request->post('api_key', ''));
+        AiSetting::save('openai', ['api_key' => $key, 'model' => 'gpt-image-1', 'is_active' => 1]);
+        $this->jsonSuccess('Chave OpenAI salva com sucesso!');
     }
 
     // ── POST /admin/meta/test ────────────────────────────────────────

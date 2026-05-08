@@ -188,6 +188,7 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     // ── META Admin ────────────────────────────────────────────────
     $router->get('/meta',                                        ['App\Controllers\MetaAdminController', 'index']);
     $router->post('/meta/settings',                              ['App\Controllers\MetaAdminController', 'saveSettings']);
+    $router->post('/meta/openai-key',                            ['App\Controllers\MetaAdminController', 'saveOpenAiKey']);
     $router->post('/meta/test',                                  ['App\Controllers\MetaAdminController', 'testConnection']);
 
     // ── CRM Admin ─────────────────────────────────────────────────
