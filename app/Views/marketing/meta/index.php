@@ -266,6 +266,78 @@
   </div>
 </div>
 
+<!-- ================================================================
+     MODAL: Preview do Anúncio
+================================================================ -->
+<div class="modal fade" id="adPreviewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold"><i class="bi bi-eye me-2 text-primary"></i>Preview do Anúncio</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <div class="row g-4">
+
+          <!-- Controls -->
+          <div class="col-lg-4">
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Nome da página</label>
+              <input type="text" id="prev-pagename" class="form-control form-control-sm" value="Minha Empresa" oninput="renderPreview()">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Headline <span class="text-muted fw-normal">(Facebook)</span></label>
+              <input type="text" id="prev-headline" class="form-control form-control-sm" placeholder="Título do anúncio" oninput="renderPreview()">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Legenda / Copy</label>
+              <textarea id="prev-caption" class="form-control form-control-sm" rows="5" placeholder="Texto do anúncio aparece aqui..." oninput="renderPreview()"></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Botão CTA</label>
+              <select id="prev-cta" class="form-select form-select-sm" onchange="renderPreview()">
+                <option>Saiba Mais</option>
+                <option>Comprar Agora</option>
+                <option>Cadastre-se</option>
+                <option>Entrar em Contato</option>
+                <option>Baixar</option>
+                <option>Reservar</option>
+                <option>Obter Oferta</option>
+                <option>Inscrever-se</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">URL do site <span class="text-muted fw-normal">(opcional)</span></label>
+              <input type="text" id="prev-url" class="form-control form-control-sm" placeholder="www.seusite.com.br" oninput="renderPreview()">
+            </div>
+            <div class="d-flex gap-2 mt-2">
+              <button class="btn btn-sm btn-outline-secondary flex-grow-1" onclick="window.open(previewImageUrl,'_blank')">
+                <i class="bi bi-download me-1"></i>Baixar imagem
+              </button>
+              <button class="btn btn-sm btn-outline-primary flex-grow-1" onclick="copyPreviewUrl()">
+                <i class="bi bi-clipboard me-1"></i>Copiar URL
+              </button>
+            </div>
+          </div>
+
+          <!-- Preview -->
+          <div class="col-lg-8">
+            <ul class="nav nav-pills gap-1 mb-3">
+              <li><button class="nav-link active py-1 px-3" onclick="switchPrev('ig_feed',this)"><i class="bi bi-instagram me-1"></i>Instagram Feed</button></li>
+              <li><button class="nav-link py-1 px-3" onclick="switchPrev('fb_feed',this)"><i class="bi bi-facebook me-1"></i>Facebook Feed</button></li>
+              <li><button class="nav-link py-1 px-3" onclick="switchPrev('stories',this)"><i class="bi bi-phone me-1"></i>Stories</button></li>
+            </ul>
+            <div id="preview-area"
+                 style="display:flex;justify-content:center;align-items:flex-start;background:#f0f2f5;padding:24px;border-radius:12px;min-height:460px;overflow:auto;">
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <?php \Core\View::endSection() ?>
 <?php \Core\View::section('scripts') ?>
 <script>
@@ -278,9 +350,13 @@ const META_MK = {
 
 let activeSessionId = null;
 let newSessionModal;
+let adPreviewModal;
+let previewImageUrl = '';
+let previewPlatform = 'ig_feed';
 
 document.addEventListener('DOMContentLoaded', () => {
-  newSessionModal = new bootstrap.Modal(document.getElementById('newSessionModal'));
+  newSessionModal  = new bootstrap.Modal(document.getElementById('newSessionModal'));
+  adPreviewModal   = new bootstrap.Modal(document.getElementById('adPreviewModal'));
 });
 
 // ── Session management ────────────────────────────────────────────────
@@ -515,17 +591,20 @@ function approveAction(btn, key) {
             const img   = document.createElement('img');
             img.src     = url;
             img.className = 'rounded border d-block mb-1';
-            img.style.cssText = 'max-width:100%;max-height:280px;object-fit:cover;';
+            img.style.cssText = 'max-width:100%;max-height:240px;object-fit:cover;cursor:pointer;';
+            img.title = 'Clique para ver preview do anúncio';
+            img.onclick = () => openAdPreview(url);
             const row   = document.createElement('div');
-            row.className = 'd-flex gap-1 mb-2';
+            row.className = 'd-flex gap-1 mb-2 flex-wrap';
             row.innerHTML =
+              `<button class="btn btn-sm btn-primary py-0 px-2 fw-semibold" style="font-size:.72rem;" onclick="openAdPreview('${escHtml(url)}')"><i class="bi bi-eye me-1"></i>Preview do Anúncio</button>` +
               `<a href="${escHtml(url)}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.72rem;"><i class="bi bi-box-arrow-up-right me-1"></i>Abrir</a>` +
-              `<button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.72rem;" onclick="copyUrl(this,'${escHtml(url)}')"><i class="bi bi-clipboard me-1"></i>Copiar URL</button>`;
+              `<button class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.72rem;" onclick="copyUrl(this,'${escHtml(url)}')"><i class="bi bi-clipboard me-1"></i>Copiar URL</button>`;
             wrap.appendChild(img);
             wrap.appendChild(row);
           });
           if (card) card.appendChild(wrap);
-          appendBubble('assistant', '✅ **Imagem gerada!** Confirme para usar no criativo do anúncio.', []);
+          appendBubble('assistant', '✅ **Imagem gerada!** Clique em **Preview do Anúncio** para visualizar como ficará nas plataformas.', []);
         } else {
           appendBubble('assistant', `✅ **${actionTypeLabel(type)}** executada com sucesso.\nID Meta: ${res.data?.meta_result?.id || 'N/A'}`, []);
         }
@@ -583,6 +662,127 @@ function copyUrl(btn, url) {
     btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Copiado!';
     setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard me-1"></i>Copiar URL'; }, 2000);
   });
+}
+
+// ── Ad Preview ────────────────────────────────────────────────────────
+
+function openAdPreview(url) {
+  previewImageUrl = url;
+  previewPlatform = 'ig_feed';
+  document.querySelectorAll('#adPreviewModal .nav-link').forEach((b,i) => b.classList.toggle('active', i === 0));
+  renderPreview();
+  adPreviewModal.show();
+}
+
+function switchPrev(platform, btn) {
+  previewPlatform = platform;
+  document.querySelectorAll('#adPreviewModal .nav-link').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderPreview();
+}
+
+function renderPreview() {
+  const name    = escHtml(document.getElementById('prev-pagename').value || 'Minha Empresa');
+  const headline= escHtml(document.getElementById('prev-headline').value || 'Descubra nossa oferta especial');
+  const caption = escHtml((document.getElementById('prev-caption').value || 'Texto do anúncio aparece aqui.').substring(0, 200));
+  const cta     = escHtml(document.getElementById('prev-cta').value || 'Saiba Mais');
+  const site    = escHtml(document.getElementById('prev-url').value || 'www.exemplo.com.br');
+  const img     = escHtml(previewImageUrl);
+  const initial = name.charAt(0).toUpperCase();
+
+  const area = document.getElementById('preview-area');
+
+  if (previewPlatform === 'ig_feed') {
+    area.innerHTML = `
+    <div style="width:360px;background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.15);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <div style="display:flex;align-items:center;padding:10px 12px;gap:10px;">
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#f9317c,#9b27af);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;flex-shrink:0;">${initial}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;color:#262626;">${name}</div>
+          <div style="font-size:11px;color:#8e8e8e;">Patrocinado · <span style="font-size:10px;">🌐</span></div>
+        </div>
+        <div style="font-size:18px;color:#262626;line-height:1;">···</div>
+      </div>
+      <div style="width:100%;aspect-ratio:1;overflow:hidden;background:#f0f0f0;">
+        <img src="${img}" style="width:100%;height:100%;object-fit:cover;display:block;" />
+      </div>
+      <div style="padding:10px 12px;border-bottom:1px solid #efefef;display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:13px;font-weight:600;color:#262626;">${cta} <span style="font-size:11px;color:#8e8e8e;">›</span></div>
+        <div style="font-size:11px;color:#8e8e8e;">Visitar perfil</div>
+      </div>
+      <div style="padding:8px 12px;">
+        <div style="display:flex;gap:16px;margin-bottom:8px;">
+          <svg width="22" height="22" fill="none" stroke="#262626" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <svg width="22" height="22" fill="none" stroke="#262626" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <svg width="22" height="22" fill="none" stroke="#262626" stroke-width="1.8" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          <svg width="22" height="22" fill="none" stroke="#262626" stroke-width="1.8" viewBox="0 0 24 24" style="margin-left:auto;"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div style="font-size:13px;font-weight:600;color:#262626;margin-bottom:4px;">1.234 curtidas</div>
+        <div style="font-size:13px;color:#262626;line-height:1.4;"><span style="font-weight:600;">${name}</span> ${caption}</div>
+        <div style="font-size:12px;color:#8e8e8e;margin-top:6px;">Ver todos os 87 comentários</div>
+        <div style="font-size:11px;color:#c7c7c7;margin-top:4px;text-transform:uppercase;letter-spacing:.3px;">Há 2 horas</div>
+      </div>
+    </div>`;
+
+  } else if (previewPlatform === 'fb_feed') {
+    area.innerHTML = `
+    <div style="width:400px;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.15);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <div style="display:flex;align-items:flex-start;padding:12px 16px;gap:10px;">
+        <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#4776e6,#8e54e9);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;flex-shrink:0;">${initial}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;color:#050505;">${name}</div>
+          <div style="font-size:12px;color:#65676b;">Patrocinado · 🌐</div>
+        </div>
+        <div style="font-size:20px;color:#65676b;line-height:1;">···</div>
+      </div>
+      <div style="padding:0 16px 12px;font-size:14px;color:#050505;line-height:1.5;">${caption}</div>
+      <div style="width:100%;aspect-ratio:1.91;overflow:hidden;background:#f0f0f0;">
+        <img src="${img}" style="width:100%;height:100%;object-fit:cover;display:block;" />
+      </div>
+      <div style="display:flex;align-items:center;background:#f0f2f5;padding:12px 16px;gap:12px;border-bottom:1px solid #ddd;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:11px;color:#65676b;text-transform:uppercase;margin-bottom:2px;">${site}</div>
+          <div style="font-size:14px;font-weight:700;color:#050505;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${headline}</div>
+        </div>
+        <button style="background:#e4e6eb;border:none;border-radius:6px;padding:7px 12px;font-size:13px;font-weight:600;color:#050505;cursor:default;white-space:nowrap;flex-shrink:0;">${cta}</button>
+      </div>
+      <div style="padding:6px 16px;border-bottom:1px solid #efefef;display:flex;gap:4px;">
+        <span style="font-size:13px;color:#65676b;">👍❤️ 1,2 mil</span>
+        <span style="margin-left:auto;font-size:13px;color:#65676b;">234 comentários</span>
+      </div>
+      <div style="display:flex;">
+        ${['👍 Curtir','💬 Comentar','↗ Compartilhar'].map(a=>`<div style="flex:1;text-align:center;padding:8px 4px;font-size:13px;font-weight:600;color:#65676b;border-right:1px solid #efefef;">${a}</div>`).join('')}
+      </div>
+    </div>`;
+
+  } else {
+    area.innerHTML = `
+    <div style="width:220px;height:390px;background:#000;border-radius:20px;overflow:hidden;position:relative;box-shadow:0 4px 24px rgba(0,0,0,.4);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <div style="position:absolute;top:10px;left:10px;right:10px;display:flex;gap:4px;z-index:10;">
+        <div style="flex:0.4;height:2px;background:rgba(255,255,255,.9);border-radius:2px;"></div>
+        <div style="flex:1;height:2px;background:rgba(255,255,255,.4);border-radius:2px;"></div>
+        <div style="flex:1;height:2px;background:rgba(255,255,255,.4);border-radius:2px;"></div>
+      </div>
+      <div style="position:absolute;top:20px;left:10px;right:10px;display:flex;align-items:center;gap:8px;z-index:10;">
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#f9317c,#9b27af);border:2px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;flex-shrink:0;">${initial}</div>
+        <div>
+          <div style="color:#fff;font-size:11px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.6);">${name}</div>
+          <div style="color:rgba(255,255,255,.75);font-size:9px;">Patrocinado</div>
+        </div>
+        <div style="margin-left:auto;color:rgba(255,255,255,.8);font-size:16px;">···</div>
+      </div>
+      <img src="${img}" style="width:100%;height:100%;object-fit:cover;display:block;" />
+      <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:linear-gradient(transparent,rgba(0,0,0,.65));"></div>
+      <div style="position:absolute;bottom:14px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
+        <div style="color:rgba(255,255,255,.8);font-size:16px;line-height:1;">⌃</div>
+        <div style="background:rgba(255,255,255,.92);color:#000;font-size:10px;font-weight:700;padding:5px 18px;border-radius:20px;">${cta}</div>
+      </div>
+    </div>`;
+  }
+}
+
+function copyPreviewUrl() {
+  navigator.clipboard.writeText(previewImageUrl).then(() => Toast.show('URL copiada!', 'success'));
 }
 
 function markdownToHtml(text) {
