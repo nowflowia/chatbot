@@ -154,6 +154,13 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     $router->get('/crm/board/{pipelineId}', ['App\Controllers\CrmController', 'board'])->middleware('feature:crm');
     $router->get('/crm', ['App\Controllers\CrmController', 'index'])->middleware('feature:crm');
 
+    // ── Instagram Admin ───────────────────────────────────────────
+    $router->get('/instagram',                                   ['App\Controllers\InstagramAdminController', 'index']);
+    $router->post('/instagram/settings',                         ['App\Controllers\InstagramAdminController', 'saveSettings']);
+    $router->post('/instagram/test',                             ['App\Controllers\InstagramAdminController', 'testConnection']);
+    $router->get('/instagram/oauth/start',                       ['App\Controllers\InstagramAdminController', 'oauthStart']);
+    $router->get('/instagram/oauth/callback',                    ['App\Controllers\InstagramAdminController', 'oauthCallback']);
+
     // ── Marketing ─────────────────────────────────────────────────
     $router->get('/marketing',                                   ['App\Controllers\MarketingController', 'index'])->middleware('feature:marketing');
     $router->post('/marketing/lists',                            ['App\Controllers\MarketingController', 'storeList'])->middleware('feature:marketing');
@@ -164,6 +171,10 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     $router->post('/marketing/campaigns/{id}/send',              ['App\Controllers\MarketingController', 'sendCampaign'])->middleware('feature:marketing');
     $router->post('/marketing/campaigns/{id}/delete',            ['App\Controllers\MarketingController', 'destroyCampaign'])->middleware('feature:marketing');
     $router->post('/marketing/contacts/search',                  ['App\Controllers\MarketingController', 'searchContact'])->middleware('feature:marketing');
+    $router->get('/marketing/instagram',                         ['App\Controllers\InstagramMarketingController', 'index'])->middleware('feature:marketing');
+    $router->post('/marketing/instagram/posts',                  ['App\Controllers\InstagramMarketingController', 'storePost'])->middleware('feature:marketing');
+    $router->post('/marketing/instagram/posts/{id}/publish',     ['App\Controllers\InstagramMarketingController', 'publishPost'])->middleware('feature:marketing');
+    $router->post('/marketing/instagram/posts/{id}/delete',      ['App\Controllers\InstagramMarketingController', 'destroyPost'])->middleware('feature:marketing');
 
     // ── CRM Admin ─────────────────────────────────────────────────
     $router->get('/crm-admin',                                 ['App\Controllers\CrmAdminController', 'index']);

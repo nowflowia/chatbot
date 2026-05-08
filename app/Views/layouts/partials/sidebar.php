@@ -173,6 +173,12 @@ $adminOpen      = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config',
             <span class="link-label">Listas</span>
           </a>
         </li>
+        <li>
+          <a href="<?= url('admin/marketing/instagram') ?>" class="nav-link nav-sub<?= isActive('marketing/instagram') ?>">
+            <i class="bi bi-instagram" style="color:#e1306c;"></i>
+            <span class="link-label">Instagram</span>
+          </a>
+        </li>
       </ul>
     </div>
     <?php endif; ?>
@@ -201,6 +207,12 @@ $adminOpen      = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config',
           </a>
         </li>
         <?php if (\Core\Auth::isAdmin()): ?>
+        <li>
+          <a href="<?= url('admin/instagram') ?>" class="nav-link nav-sub<?= isActive('/instagram') && !isActive('marketing') ?>">
+            <i class="bi bi-instagram" style="color:#e1306c;"></i>
+            <span class="link-label">Instagram</span>
+          </a>
+        </li>
         <li>
           <a href="<?= url('admin/crm-admin') ?>" class="nav-link nav-sub<?= isActive('crm-admin') ?>">
             <i class="bi bi-person-gear"></i>

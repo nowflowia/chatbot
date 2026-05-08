@@ -131,7 +131,7 @@ $cacheValid = $cacheAge !== null && $cacheAge < $cacheTtl;
             <?php
             $expectedFeatures = [
               'CRM (Negociações, Empresas, Contatos)' => 'crm',
-              'Marketing (Campanhas, Listas)'          => 'marketing',
+              'Marketing (Campanhas, Listas, Instagram)' => 'marketing',
               'API REST externa'                       => 'api',
             ];
             foreach ($expectedFeatures as $label => $key):
