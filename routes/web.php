@@ -154,6 +154,17 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     $router->get('/crm/board/{pipelineId}', ['App\Controllers\CrmController', 'board'])->middleware('feature:crm');
     $router->get('/crm', ['App\Controllers\CrmController', 'index'])->middleware('feature:crm');
 
+    // ── Marketing ─────────────────────────────────────────────────
+    $router->get('/marketing',                                   ['App\Controllers\MarketingController', 'index'])->middleware('feature:marketing');
+    $router->post('/marketing/lists',                            ['App\Controllers\MarketingController', 'storeList'])->middleware('feature:marketing');
+    $router->post('/marketing/lists/{id}/delete',                ['App\Controllers\MarketingController', 'destroyList'])->middleware('feature:marketing');
+    $router->post('/marketing/lists/{id}/contacts',              ['App\Controllers\MarketingController', 'addContacts'])->middleware('feature:marketing');
+    $router->get('/marketing/lists/{id}/contacts',               ['App\Controllers\MarketingController', 'listContacts'])->middleware('feature:marketing');
+    $router->post('/marketing/campaigns',                        ['App\Controllers\MarketingController', 'storeCampaign'])->middleware('feature:marketing');
+    $router->post('/marketing/campaigns/{id}/send',              ['App\Controllers\MarketingController', 'sendCampaign'])->middleware('feature:marketing');
+    $router->post('/marketing/campaigns/{id}/delete',            ['App\Controllers\MarketingController', 'destroyCampaign'])->middleware('feature:marketing');
+    $router->post('/marketing/contacts/search',                  ['App\Controllers\MarketingController', 'searchContact'])->middleware('feature:marketing');
+
     // ── CRM Admin ─────────────────────────────────────────────────
     $router->get('/crm-admin',                                 ['App\Controllers\CrmAdminController', 'index']);
     $router->get('/crm-admin/contacts/template',               ['App\Controllers\CrmAdminController', 'contactsTemplate']);

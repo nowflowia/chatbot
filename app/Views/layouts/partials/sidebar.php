@@ -24,6 +24,7 @@ $avatarBg     = $avatarColors[ord(($authUser['name'] ?? 'U')[0]) % count($avatar
 $chatOpen       = isGroupOpen(['/chat', 'queue', 'flow']);
 $conversasOpen  = isGroupOpen(['/conversations']);
 $crmOpen        = isGroupOpen(['/crm']);
+$marketingOpen  = isGroupOpen(['/marketing']);
 $adminOpen      = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config', 'license', 'whatsapp', 'crm-admin']);
 ?>
 <!-- Sidebar overlay (mobile) -->
@@ -144,6 +145,34 @@ $adminOpen      = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config',
           </a>
         </li>
         <?php endif; ?>
+      </ul>
+    </div>
+    <?php endif; ?>
+
+    <!-- ── Marketing ─────────────────────────── -->
+    <?php if (\Core\Auth::hasFeature('marketing')): ?>
+    <div class="nav-group">
+      <button class="nav-group-toggle<?= $marketingOpen ? ' open' : '' ?>"
+              data-target="group-marketing" type="button">
+        <span class="d-flex align-items-center gap-2">
+          <i class="bi bi-megaphone-fill" style="color:#f59e0b;"></i>
+          <span class="link-label">Marketing</span>
+        </span>
+        <i class="bi bi-chevron-right nav-group-arrow"></i>
+      </button>
+      <ul class="nav flex-column nav-group-items<?= $marketingOpen ? ' show' : '' ?>" id="group-marketing">
+        <li>
+          <a href="<?= url('admin/marketing') ?>" class="nav-link nav-sub<?= isActive('/marketing') && !isActive('marketing/lists') ? ' active' : '' ?>">
+            <i class="bi bi-grid-fill"></i>
+            <span class="link-label">Campanhas</span>
+          </a>
+        </li>
+        <li>
+          <a href="<?= url('admin/marketing') ?>?tab=lists" class="nav-link nav-sub<?= isActive('marketing') && isActive('tab=lists') ? ' active' : '' ?>">
+            <i class="bi bi-list-ul"></i>
+            <span class="link-label">Listas</span>
+          </a>
+        </li>
       </ul>
     </div>
     <?php endif; ?>
