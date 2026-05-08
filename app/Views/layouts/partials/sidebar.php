@@ -25,7 +25,7 @@ $chatOpen       = isGroupOpen(['/chat', 'queue', 'flow']);
 $conversasOpen  = isGroupOpen(['/conversations']);
 $crmOpen        = isGroupOpen(['/crm']);
 $marketingOpen  = isGroupOpen(['/marketing']);
-$adminOpen      = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config', 'license', 'whatsapp', 'crm-admin']);
+$adminOpen      = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config', 'license', 'whatsapp', 'crm-admin', 'instagram', 'meta']);
 ?>
 <!-- Sidebar overlay (mobile) -->
 <div id="sidebar-overlay" class="sidebar-overlay"></div>
@@ -179,6 +179,12 @@ $adminOpen      = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config',
             <span class="link-label">Instagram</span>
           </a>
         </li>
+        <li>
+          <a href="<?= url('admin/marketing/meta') ?>" class="nav-link nav-sub<?= isActive('marketing/meta') ?>">
+            <i class="bi bi-meta" style="color:#1877f2;"></i>
+            <span class="link-label">META</span>
+          </a>
+        </li>
       </ul>
     </div>
     <?php endif; ?>
@@ -211,6 +217,12 @@ $adminOpen      = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config',
           <a href="<?= url('admin/instagram') ?>" class="nav-link nav-sub<?= isActive('/instagram') && !isActive('marketing') ?>">
             <i class="bi bi-instagram" style="color:#e1306c;"></i>
             <span class="link-label">Instagram</span>
+          </a>
+        </li>
+        <li>
+          <a href="<?= url('admin/meta') ?>" class="nav-link nav-sub<?= isActive('/meta') && !isActive('marketing') ?>">
+            <i class="bi bi-meta" style="color:#1877f2;"></i>
+            <span class="link-label">META</span>
           </a>
         </li>
         <li>

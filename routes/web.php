@@ -176,6 +176,19 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     $router->post('/marketing/instagram/posts/{id}/publish',     ['App\Controllers\InstagramMarketingController', 'publishPost'])->middleware('feature:marketing');
     $router->post('/marketing/instagram/posts/{id}/delete',      ['App\Controllers\InstagramMarketingController', 'destroyPost'])->middleware('feature:marketing');
 
+    // ── META Marketing (AI Agent) ─────────────────────────────────
+    $router->get('/marketing/meta',                                       ['App\Controllers\MetaMarketingController', 'index'])->middleware('feature:marketing');
+    $router->post('/marketing/meta/agent/session',                        ['App\Controllers\MetaMarketingController', 'startSession'])->middleware('feature:marketing');
+    $router->post('/marketing/meta/agent/{id}/chat',                      ['App\Controllers\MetaMarketingController', 'agentChat'])->middleware('feature:marketing');
+    $router->post('/marketing/meta/agent/{id}/execute',                   ['App\Controllers\MetaMarketingController', 'executeAction'])->middleware('feature:marketing');
+    $router->get('/marketing/meta/agent/{id}',                            ['App\Controllers\MetaMarketingController', 'getSession'])->middleware('feature:marketing');
+    $router->post('/marketing/meta/campaigns/{id}/insights',              ['App\Controllers\MetaMarketingController', 'refreshInsights'])->middleware('feature:marketing');
+
+    // ── META Admin ────────────────────────────────────────────────
+    $router->get('/meta',                                        ['App\Controllers\MetaAdminController', 'index']);
+    $router->post('/meta/settings',                              ['App\Controllers\MetaAdminController', 'saveSettings']);
+    $router->post('/meta/test',                                  ['App\Controllers\MetaAdminController', 'testConnection']);
+
     // ── CRM Admin ─────────────────────────────────────────────────
     $router->get('/crm-admin',                                 ['App\Controllers\CrmAdminController', 'index']);
     $router->get('/crm-admin/contacts/template',               ['App\Controllers\CrmAdminController', 'contactsTemplate']);
