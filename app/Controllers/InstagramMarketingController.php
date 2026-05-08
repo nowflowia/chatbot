@@ -40,6 +40,14 @@ class InstagramMarketingController extends Controller
         ]);
     }
 
+    // ── GET /admin/marketing/instagram/create ───────────────────────
+
+    public function createPage(Request $request): string
+    {
+        $this->requireMarketing();
+        return $this->view('marketing/instagram/create', []);
+    }
+
     // ── POST /admin/marketing/instagram/posts ────────────────────────
 
     public function storePost(Request $request): void

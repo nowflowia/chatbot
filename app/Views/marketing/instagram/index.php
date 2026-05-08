@@ -7,10 +7,9 @@
     <h5 class="fw-bold mb-0 text-dark">Instagram — Posts Orgânicos</h5>
     <small class="text-muted">Crie, agende e publique posts no Instagram Business</small>
   </div>
-  <button class="btn btn-primary d-flex align-items-center gap-2"
-          data-bs-toggle="modal" data-bs-target="#postModal">
+  <a href="<?= url('admin/marketing/instagram/create') ?>" class="btn btn-primary d-flex align-items-center gap-2">
     <i class="bi bi-plus-lg"></i> Novo Post
-  </button>
+  </a>
 </div>
 
 <!-- Stats rápidos -->
@@ -52,95 +51,6 @@ $statItems = [
   <?php endforeach; ?>
 </div>
 <?php endif; ?>
-
-<!-- ================================================================
-     MODAL: Novo Post
-================================================================ -->
-<div class="modal fade" id="postModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content border-0 shadow">
-      <div class="modal-header border-bottom-0 pb-0">
-        <h5 class="modal-title fw-bold">
-          <i class="bi bi-instagram me-2" style="color:#e1306c;"></i>Novo Post
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body pt-2">
-        <div id="post-alert"></div>
-        <form id="post-form" novalidate>
-          <?= csrf_field() ?>
-          <div class="row g-3">
-
-            <div class="col-md-6">
-              <label class="form-label fw-semibold small">Nome da Campanha <span class="text-muted fw-normal">(opcional)</span></label>
-              <input type="text" name="campaign_name" class="form-control" placeholder="Ex.: Lançamento Produto X">
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label fw-semibold small">Tipo de Formato <span class="text-danger">*</span></label>
-              <select name="media_type" id="p-media_type" class="form-select" onchange="onTypeChange()">
-                <option value="IMAGE">🖼️ Foto (Feed)</option>
-                <option value="CAROUSEL">🎠 Carrossel (múltiplas fotos)</option>
-                <option value="VIDEO">🎬 Vídeo (Feed)</option>
-                <option value="REELS">🎥 Reels</option>
-                <option value="STORIES">📖 Stories</option>
-              </select>
-            </div>
-
-            <div class="col-12">
-              <label class="form-label fw-semibold small" id="url-label">
-                URL da Imagem <span class="text-danger">*</span>
-              </label>
-              <textarea name="media_urls" id="p-media_urls" class="form-control font-monospace" rows="2"
-                        placeholder="https://exemplo.com/imagem.jpg"></textarea>
-              <div class="form-text" id="url-hint">URL pública da imagem (JPEG ou PNG).</div>
-            </div>
-
-            <div class="col-12">
-              <label class="form-label fw-semibold small">Legenda</label>
-              <textarea name="caption" id="p-caption" class="form-control" rows="4"
-                        placeholder="Escreva a legenda do post..."
-                        oninput="updatePreview()"></textarea>
-              <div class="d-flex justify-content-between">
-                <div class="form-text">Máx. recomendado: 2.200 caracteres.</div>
-                <small class="text-muted mt-1" id="caption-count">0</small>
-              </div>
-            </div>
-
-            <div class="col-12">
-              <label class="form-label fw-semibold small">Hashtags</label>
-              <input type="text" name="hashtags" id="p-hashtags" class="form-control"
-                     placeholder="#produto #marca #lancamento"
-                     oninput="updatePreview()">
-              <div class="form-text">Serão adicionadas ao final da legenda.</div>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label fw-semibold small">Agendar para <span class="text-muted fw-normal">(opcional)</span></label>
-              <input type="datetime-local" name="scheduled_at" class="form-control">
-              <div class="form-text">Deixe em branco para salvar como rascunho.</div>
-            </div>
-
-            <!-- Preview -->
-            <div class="col-12" id="preview-wrap" style="display:none;">
-              <label class="form-label fw-semibold small text-muted">Pré-visualização da legenda</label>
-              <div class="p-3 rounded border" style="background:#fafafa;font-size:.85rem;white-space:pre-wrap;max-height:120px;overflow-y:auto;"
-                   id="preview-caption"></div>
-            </div>
-
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer border-top-0 pt-0">
-        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary fw-semibold px-4" id="btn-save-post" onclick="savePost()">
-          <span class="spinner-border spinner-border-sm d-none me-1" id="post-spinner"></span>
-          Salvar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- ================================================================
      MODAL: Confirmar publicação
@@ -196,8 +106,8 @@ $statItems = [
 <?php \Core\View::section('scripts') ?>
 <script>
 const IG_MK = {
-  posts:   '<?= url('admin/marketing/instagram/posts') ?>',
-  csrf:    '<?= csrf_token() ?>',
+  posts: '<?= url('admin/marketing/instagram/posts') ?>',
+  csrf:  '<?= csrf_token() ?>',
 };
 
 let publishModal, deleteModal;
@@ -205,69 +115,7 @@ let publishModal, deleteModal;
 document.addEventListener('DOMContentLoaded', () => {
   publishModal = new bootstrap.Modal(document.getElementById('publishModal'));
   deleteModal  = new bootstrap.Modal(document.getElementById('deleteModal'));
-  document.getElementById('postModal').addEventListener('hidden.bs.modal', resetPostForm);
-  document.getElementById('p-caption').addEventListener('input', () => {
-    document.getElementById('caption-count').textContent = document.getElementById('p-caption').value.length;
-  });
 });
-
-function onTypeChange() {
-  const type = document.getElementById('p-media_type').value;
-  const urlLabel = document.getElementById('url-label');
-  const urlHint  = document.getElementById('url-hint');
-
-  const cfg = {
-    IMAGE:    ['URL da Imagem', 'URL pública da imagem (JPEG ou PNG). Ex.: https://cdn.exemplo.com/foto.jpg'],
-    CAROUSEL: ['URLs das Imagens (uma por linha)', 'Até 10 imagens. Uma URL por linha.'],
-    VIDEO:    ['URL do Vídeo', 'URL pública do vídeo (MP4). Ex.: https://cdn.exemplo.com/video.mp4'],
-    REELS:    ['URL do Reel (vídeo)', 'URL pública do vídeo vertical (MP4, máx. 90s).'],
-    STORIES:  ['URL da Imagem/Vídeo', 'URL pública da mídia para Stories (proporção 9:16 recomendada).'],
-  };
-  const [label, hint] = cfg[type] || cfg.IMAGE;
-  urlLabel.innerHTML = label + ' <span class="text-danger">*</span>';
-  urlHint.textContent = hint;
-  document.getElementById('p-media_urls').rows = type === 'CAROUSEL' ? 4 : 2;
-}
-
-function updatePreview() {
-  const cap     = document.getElementById('p-caption').value;
-  const hash    = document.getElementById('p-hashtags').value;
-  const wrap    = document.getElementById('preview-wrap');
-  const preview = document.getElementById('preview-caption');
-
-  const full = [cap, hash].filter(Boolean).join('\n\n');
-  if (!full) { wrap.style.display = 'none'; return; }
-  wrap.style.display = 'block';
-  preview.textContent = full;
-}
-
-function savePost() {
-  const btn  = document.getElementById('btn-save-post');
-  const spin = document.getElementById('post-spinner');
-  btn.disabled = true;
-  spin.classList.remove('d-none');
-  document.getElementById('post-alert').innerHTML = '';
-
-  fetch(IG_MK.posts, {
-    method: 'POST',
-    body: new FormData(document.getElementById('post-form')),
-    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-  })
-    .then(r => r.json())
-    .then(res => {
-      btn.disabled = false;
-      spin.classList.add('d-none');
-      if (res.success) {
-        bootstrap.Modal.getInstance(document.getElementById('postModal')).hide();
-        Toast.show(res.message, 'success');
-        prependCard(res.data?.post);
-      } else {
-        document.getElementById('post-alert').innerHTML =
-          `<div class="alert alert-danger py-2 small">${escHtml(res.message)}</div>`;
-      }
-    })
-    .catch(() => { btn.disabled = false; spin.classList.add('d-none'); Toast.show('Erro de conexão.', 'error'); });
-}
 
 function prependCard(p) {
   if (!p) return;
@@ -391,13 +239,6 @@ function statusBadge(status) {
   };
   const [cls, label] = map[status] || map.draft;
   return `<span class="badge bg-${cls} status-badge">${label}</span>`;
-}
-
-function resetPostForm() {
-  document.getElementById('post-form').reset();
-  document.getElementById('post-alert').innerHTML = '';
-  document.getElementById('preview-wrap').style.display = 'none';
-  document.getElementById('caption-count').textContent = '0';
 }
 
 function escHtml(s) {

@@ -4,6 +4,7 @@
 <?php
 $s  = $settings ?? [];
 $st = $s['status'] ?? 'inactive';
+$aiOk = $aiConfigured ?? false;
 $stMap = [
     'active'   => ['#dcfce7','#166534','#16a34a','Conectado'],
     'inactive' => ['#f1f5f9','#475569','#94a3b8','Não testado'],
@@ -41,6 +42,27 @@ $stMap = [
   </div>
 </div>
 <?php endif; ?>
+
+<!-- AI Config notice -->
+<div class="alert d-flex gap-3 align-items-center py-3 mb-4 <?= $aiOk ? 'alert-success' : 'alert-warning' ?>"
+     style="border-left:4px solid <?= $aiOk ? '#16a34a' : '#d97706' ?>">
+  <i class="bi <?= $aiOk ? 'bi-robot text-success' : 'bi-exclamation-triangle-fill text-warning' ?> fs-5 flex-shrink-0"></i>
+  <div class="flex-grow-1">
+    <div class="fw-semibold">
+      IA Claude (Anthropic) —
+      <?= $aiOk ? 'API Key configurada' : 'API Key não configurada' ?>
+    </div>
+    <div class="small text-muted">
+      O agente META usa exclusivamente <strong>Claude (Anthropic)</strong> para criar estratégias e campanhas.
+      <?php if (!$aiOk): ?>
+        Configure sua chave antes de usar o agente.
+      <?php endif; ?>
+    </div>
+  </div>
+  <a href="<?= url('admin/settings?tab=ai') ?>" class="btn btn-sm <?= $aiOk ? 'btn-outline-success' : 'btn-warning' ?> fw-semibold flex-shrink-0">
+    <i class="bi bi-gear me-1"></i><?= $aiOk ? 'Ver config' : 'Configurar agora' ?>
+  </a>
+</div>
 
 <div class="row g-4">
 

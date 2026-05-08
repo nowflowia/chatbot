@@ -172,6 +172,7 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     $router->post('/marketing/campaigns/{id}/delete',            ['App\Controllers\MarketingController', 'destroyCampaign'])->middleware('feature:marketing');
     $router->post('/marketing/contacts/search',                  ['App\Controllers\MarketingController', 'searchContact'])->middleware('feature:marketing');
     $router->get('/marketing/instagram',                         ['App\Controllers\InstagramMarketingController', 'index'])->middleware('feature:marketing');
+    $router->get('/marketing/instagram/create',                  ['App\Controllers\InstagramMarketingController', 'createPage'])->middleware('feature:marketing');
     $router->post('/marketing/instagram/posts',                  ['App\Controllers\InstagramMarketingController', 'storePost'])->middleware('feature:marketing');
     $router->post('/marketing/instagram/posts/{id}/publish',     ['App\Controllers\InstagramMarketingController', 'publishPost'])->middleware('feature:marketing');
     $router->post('/marketing/instagram/posts/{id}/delete',      ['App\Controllers\InstagramMarketingController', 'destroyPost'])->middleware('feature:marketing');

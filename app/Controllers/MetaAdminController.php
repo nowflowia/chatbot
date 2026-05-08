@@ -6,6 +6,7 @@ use Core\Controller;
 use Core\Request;
 use Core\Auth;
 use App\Models\MetaAdSetting;
+use App\Models\AiSetting;
 use App\Services\MetaAdsService;
 
 class MetaAdminController extends Controller
@@ -20,8 +21,10 @@ class MetaAdminController extends Controller
     public function index(Request $request): string
     {
         $this->requireAdmin();
+        $ai = AiSetting::get('anthropic');
         return $this->view('meta_admin/index', [
-            'settings' => MetaAdSetting::getActive() ?? [],
+            'settings'    => MetaAdSetting::getActive() ?? [],
+            'aiConfigured' => !empty($ai['api_key']),
         ]);
     }
 
