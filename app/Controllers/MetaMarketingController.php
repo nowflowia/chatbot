@@ -251,6 +251,26 @@ class MetaMarketingController extends Controller
                 }
                 break;
 
+            case 'fetch_url':
+                $url = trim((string)($dataRaw['url'] ?? ''));
+                if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $url)) {
+                    $this->appendAgentMessage($db, (int)$id, '⚠️ URL inválida para fetch_url.');
+                    $this->jsonError('URL inválida.', [], 422);
+                }
+                $fetched = $this->fetchUrlContent($url);
+                if (isset($fetched['error'])) {
+                    $this->appendAgentMessage($db, (int)$id, '⚠️ Falha ao buscar URL: ' . $fetched['error']);
+                    $this->jsonError($fetched['error'], [], 422);
+                }
+                $this->appendAgentMessage($db, (int)$id,
+                    "🌐 Conteúdo extraído de {$url}:\n\n" .
+                    "Título: " . ($fetched['title'] ?? '(sem título)') . "\n\n" .
+                    "Conteúdo (até 4000 chars):\n" . mb_substr($fetched['text'] ?? '', 0, 4000)
+                );
+                logger('MetaAgent: fetch_url ok — url=' . $url . ' chars=' . mb_strlen($fetched['text'] ?? ''));
+                $this->jsonSuccess('Página extraída com sucesso!', ['title' => $fetched['title'] ?? '', 'chars' => mb_strlen($fetched['text'] ?? '')]);
+                return;
+
             default:
                 $this->jsonError("Tipo de ação desconhecido: {$type}", [], 422);
         }
@@ -370,6 +390,42 @@ class MetaMarketingController extends Controller
                 [$metaAdId, now(), $adsetMetaId]
             );
         }
+    }
+
+    private function fetchUrlContent(string $url): array
+    {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS      => 5,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; NowFlowMetaAgent/1.0)',
+            CURLOPT_HTTPHEADER     => ['Accept: text/html,application/xhtml+xml'],
+        ]);
+        $body = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+
+        if ($err)               return ['error' => "cURL: {$err}"];
+        if ($code >= 400)       return ['error' => "HTTP {$code}"];
+        if (empty($body))       return ['error' => 'Resposta vazia.'];
+
+        // Extract title
+        $title = '';
+        if (preg_match('/<title[^>]*>(.*?)<\/title>/is', $body, $m)) {
+            $title = trim(html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        }
+
+        // Strip script/style and convert to text
+        $text = preg_replace('#<(script|style|noscript|iframe)[^>]*>.*?</\1>#is', ' ', $body);
+        $text = strip_tags($text);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/\s+/', ' ', $text);
+        $text = trim($text);
+
+        return ['title' => $title, 'text' => $text];
     }
 
     private function appendAgentMessage($db, int $sessionId, string $content): void

@@ -123,6 +123,9 @@ TIPOS DE ACTION disponíveis:
 - activate_campaign → ativar campanha pausada
 - pause_campaign    → pausar campanha ativa
 - fetch_insights    → buscar métricas de campanha
+- fetch_url         → ler o conteúdo de uma página web (landing page do cliente, site do concorrente, artigo, etc.)
+                      Útil para entender produto, tom de voz, público, ofertas. data: { "url": "https://..." }
+                      Após o sistema retornar o conteúdo, use-o para refinar copy, headline, targeting e estratégia.
 
 ════════════════════════════════════════
 FORMATO OBRIGATÓRIO de cada ACTION:
