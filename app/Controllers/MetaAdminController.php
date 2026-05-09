@@ -76,6 +76,19 @@ class MetaAdminController extends Controller
         $this->jsonSuccess('OK', ['lines' => $lines, 'date' => $date]);
     }
 
+    // ── POST /admin/meta/logs/clear ──────────────────────────────────
+
+    public function clearLogs(Request $request): void
+    {
+        $this->requireAdmin();
+        $date    = $request->post('date', date('Y-m-d'));
+        $logFile = storage_path('logs/' . basename($date) . '.log');
+        if (file_exists($logFile)) {
+            file_put_contents($logFile, '');
+        }
+        $this->jsonSuccess('Log limpo.');
+    }
+
     // ── POST /admin/meta/test ────────────────────────────────────────
 
     public function testConnection(Request $request): void

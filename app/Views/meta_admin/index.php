@@ -222,16 +222,23 @@ $stMap = [
 
 <!-- ── Log Viewer ───────────────────────────────────────────────────── -->
 <div class="card border-0 shadow-sm mt-4">
-  <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
+  <div class="card-header bg-white d-flex align-items-center justify-content-between py-3 flex-wrap gap-2">
     <div class="d-flex align-items-center gap-2">
       <i class="bi bi-terminal text-secondary"></i>
       <span class="fw-semibold">Log da aplicação</span>
     </div>
-    <div class="d-flex align-items-center gap-2">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <div class="btn-group btn-group-sm" role="group">
+        <button id="filter-meta" class="btn btn-primary" onclick="setFilter('meta')">META / Imagens</button>
+        <button id="filter-all"  class="btn btn-outline-secondary" onclick="setFilter('all')">Todos</button>
+      </div>
       <input type="date" id="log-date" class="form-control form-control-sm" style="width:160px"
              value="<?= date('Y-m-d') ?>" onchange="loadLogs()">
       <button class="btn btn-sm btn-outline-secondary" onclick="loadLogs()">
         <i class="bi bi-arrow-clockwise"></i> Atualizar
+      </button>
+      <button class="btn btn-sm btn-outline-danger" onclick="clearLogs()">
+        <i class="bi bi-trash"></i> Limpar
       </button>
     </div>
   </div>
@@ -251,6 +258,7 @@ const META_ADMIN = {
   test:      '<?= url('admin/meta/test') ?>',
   openaiKey: '<?= url('admin/meta/openai-key') ?>',
   logs:      '<?= url('admin/meta/logs') ?>',
+  logsClear: '<?= url('admin/meta/logs/clear') ?>',
 };
 function saveMetaSettings() {
   toggle('save', true);
@@ -310,26 +318,57 @@ function toggleKeyVis() {
   icon.className = isPass ? 'bi bi-eye-slash' : 'bi bi-eye';
 }
 
+let logFilter = 'meta';
+const META_KEYWORDS = ['ImageGen', 'MetaAgent', 'MetaAds', 'Meta API', 'openai', 'gpt-image'];
+
+function setFilter(f) {
+  logFilter = f;
+  document.getElementById('filter-meta').className = f === 'meta' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline-secondary';
+  document.getElementById('filter-all').className  = f === 'all'  ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline-secondary';
+  renderLogs();
+}
+
+let allLogLines = [];
+
 function loadLogs() {
   const date = document.getElementById('log-date').value;
   const out  = document.getElementById('log-output');
-  out.innerHTML = '<span class="text-muted">Carregando...</span>';
   fetch(META_ADMIN.logs + '?date=' + encodeURIComponent(date), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
     .then(r => r.json())
-    .then(res => {
-      const lines = res.data?.lines ?? [];
-      if (!lines.length) { out.innerHTML = '<span class="text-slate-400">Nenhum log para esta data.</span>'; return; }
-      out.innerHTML = lines.map(l => {
-        let cls = 'color:#e2e8f0';
-        if (l.includes('] error:'))   cls = 'color:#f87171';
-        if (l.includes('] warning:')) cls = 'color:#fbbf24';
-        if (l.includes('ImageGen'))   cls = 'color:#34d399';
-        if (l.includes('MetaAgent')) cls = 'color:#60a5fa';
-        return `<div style="${cls};white-space:pre-wrap;word-break:break-all;margin-bottom:2px">${escHtml(l)}</div>`;
-      }).join('');
-      out.scrollTop = 0;
-    })
-    .catch(() => { out.innerHTML = '<span style="color:#f87171">Erro ao carregar logs.</span>'; });
+    .then(res => { allLogLines = res.data?.lines ?? []; renderLogs(); })
+    .catch(() => { document.getElementById('log-output').innerHTML = '<span style="color:#f87171">Erro ao carregar logs.</span>'; });
+}
+
+function renderLogs() {
+  const out = document.getElementById('log-output');
+  let lines = allLogLines;
+  if (logFilter === 'meta') {
+    lines = lines.filter(l => META_KEYWORDS.some(k => l.toLowerCase().includes(k.toLowerCase())));
+  }
+  if (!lines.length) {
+    out.innerHTML = '<span style="color:#94a3b8">Nenhum log ' + (logFilter === 'meta' ? 'do META/Imagens' : '') + ' para esta data.</span>';
+    return;
+  }
+  out.innerHTML = lines.map(l => {
+    let cls = 'color:#e2e8f0';
+    if (l.includes('] error:'))                          cls = 'color:#f87171';
+    if (l.includes('] warning:'))                        cls = 'color:#fbbf24';
+    if (l.includes('ImageGen') || l.includes('gpt-image')) cls = 'color:#34d399';
+    if (l.includes('MetaAgent'))                         cls = 'color:#60a5fa';
+    return `<div style="${cls};white-space:pre-wrap;word-break:break-all;margin-bottom:2px">${escHtml(l)}</div>`;
+  }).join('');
+  out.scrollTop = 0;
+}
+
+function clearLogs() {
+  if (!confirm('Limpar o log de hoje?')) return;
+  const fd = new FormData();
+  fd.append('_csrf_token', '<?= csrf_token() ?>');
+  fd.append('date', document.getElementById('log-date').value);
+  fetch(META_ADMIN.logsClear, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(r => r.json())
+    .then(() => { allLogLines = []; renderLogs(); Toast.show('Log limpo.', 'success'); })
+    .catch(() => Toast.show('Erro ao limpar log.', 'error'));
 }
 
 document.addEventListener('DOMContentLoaded', loadLogs);
