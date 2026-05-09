@@ -24,11 +24,13 @@ class MetaAdminController extends Controller
         $ai     = AiSetting::get('anthropic');
         $openai = AiSetting::get('openai');
         return $this->view('meta_admin/index', [
-            'settings'      => MetaAdSetting::getActive() ?? [],
-            'aiConfigured'  => !empty($ai['api_key']),
-            'openaiKey'     => !empty($openai['api_key']) ? substr($openai['api_key'], 0, 7) . '••••••••••••' : '',
-            'openaiOk'      => !empty($openai['api_key']),
-            'aiModels'      => \App\Services\MetaAgentService::MODELS,
+            'settings'       => MetaAdSetting::getActive() ?? [],
+            'aiConfigured'   => !empty($ai['api_key']),
+            'openaiKey'      => !empty($openai['api_key']) ? substr($openai['api_key'], 0, 7) . '••••••••••••' : '',
+            'openaiOk'       => !empty($openai['api_key']),
+            'openaiModel'    => $openai['model'] ?? 'gpt-image-1',
+            'aiModels'       => \App\Services\MetaAgentService::MODELS,
+            'imageModels'    => \App\Services\ImageGenerationService::MODELS,
         ]);
     }
 
@@ -73,9 +75,13 @@ class MetaAdminController extends Controller
     public function saveOpenAiKey(Request $request): void
     {
         $this->requireAdmin();
-        $key = trim((string) $request->post('api_key', ''));
-        AiSetting::save('openai', ['api_key' => $key, 'model' => 'gpt-image-1', 'is_active' => 1]);
-        $this->jsonSuccess('Chave OpenAI salva com sucesso!');
+        $key   = trim((string) $request->post('api_key', ''));
+        $model = trim((string) $request->post('image_model', 'gpt-image-1'));
+        if (!array_key_exists($model, \App\Services\ImageGenerationService::MODELS)) {
+            $model = 'gpt-image-1';
+        }
+        AiSetting::save('openai', ['api_key' => $key, 'model' => $model, 'is_active' => 1]);
+        $this->jsonSuccess('Configurações de imagem salvas!');
     }
 
     // ── GET /admin/meta/logs ─────────────────────────────────────────

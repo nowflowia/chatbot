@@ -191,9 +191,20 @@ $stMap = [
           </div>
           <div class="form-text">Obtenha em <strong>platform.openai.com → API keys</strong></div>
         </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Modelo de geração de imagem</label>
+          <select id="image-model-select" class="form-select form-select-sm">
+            <?php foreach ($imageModels ?? [] as $modelId => $modelLabel): ?>
+            <option value="<?= e($modelId) ?>"
+              <?= ($openaiModel ?? 'gpt-image-1') === $modelId ? 'selected' : '' ?>>
+              <?= e($modelLabel) ?>
+            </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
         <button class="btn btn-primary btn-sm w-100 fw-semibold" onclick="saveOpenAiKey()">
           <span class="spinner-border spinner-border-sm d-none me-1" id="oai-spin"></span>
-          <i class="bi bi-floppy me-1" id="oai-icon"></i>Salvar chave OpenAI
+          <i class="bi bi-floppy me-1" id="oai-icon"></i>Salvar configurações de imagem
         </button>
         <div class="mt-3 pt-2 border-top">
           <div class="small text-muted fw-semibold mb-1">Formatos gerados:</div>
@@ -344,6 +355,7 @@ function saveOpenAiKey() {
   const fd = new FormData();
   fd.append('_csrf_token', '<?= csrf_token() ?>');
   fd.append('api_key', document.getElementById('openai-key-input').value);
+  fd.append('image_model', document.getElementById('image-model-select').value);
   fetch(META_ADMIN.openaiKey, { method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'} })
     .then(r=>r.json())
     .then(res=>{

@@ -6,10 +6,16 @@ use App\Models\AiSetting;
 
 class ImageGenerationService
 {
-    private const API_URL = 'https://api.openai.com/v1/images/generations';
-    private const MODEL   = 'gpt-image-1';
+    private const API_URL      = 'https://api.openai.com/v1/images/generations';
+    private const DEFAULT_MODEL = 'gpt-image-1';
 
-    // Supported sizes for gpt-image-1
+    public const MODELS = [
+        'gpt-image-1' => 'GPT Image 1 — Mais recente (recomendado)',
+        'dall-e-3'    => 'DALL·E 3 — Alta qualidade',
+        'dall-e-2'    => 'DALL·E 2 — Mais rápido / econômico',
+    ];
+
+    // Sizes vary by model: gpt-image-1 and dall-e-3 support these
     public const SIZES = [
         '1024x1024' => 'Quadrado (1:1) — Feed',
         '1024x1536' => 'Portrait (2:3) — Stories / Reels',
@@ -17,12 +23,16 @@ class ImageGenerationService
     ];
 
     private string $apiKey;
+    private string $model;
 
     public function __construct()
     {
         $row          = AiSetting::get('openai');
         $this->apiKey = $row['api_key'] ?? '';
+        $this->model  = !empty($row['model']) ? $row['model'] : self::DEFAULT_MODEL;
     }
+
+    public function getModel(): string { return $this->model; }
 
     public function isConfigured(): bool
     {
@@ -40,14 +50,19 @@ class ImageGenerationService
             $size = '1024x1024';
         }
 
+        // dall-e-2 only supports square sizes
+        if ($this->model === 'dall-e-2' && $size !== '1024x1024') {
+            $size = '1024x1024';
+        }
+
         $payload = [
-            'model'  => self::MODEL,
+            'model'  => $this->model,
             'prompt' => $prompt,
             'n'      => 1,
             'size'   => $size,
         ];
 
-        logger('ImageGenerationService: iniciando geração — model=' . self::MODEL . ' size=' . $size . ' prompt=' . mb_substr($prompt, 0, 120));
+        logger('ImageGenerationService: iniciando geração — model=' . $this->model . ' size=' . $size . ' prompt=' . mb_substr($prompt, 0, 120));
 
         $ch = curl_init(self::API_URL);
         curl_setopt_array($ch, [
