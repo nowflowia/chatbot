@@ -55,24 +55,24 @@ class MetaAdsService
     public function createCampaign(array $data): array
     {
         return $this->post("/{$this->adAccount}/campaigns", [
-            'name'                  => $data['name'],
-            'objective'             => $data['objective'] ?? 'OUTCOME_TRAFFIC',
-            'status'                => $data['status']    ?? 'PAUSED',
-            'special_ad_categories' => [],
+            'name'                            => $data['name'],
+            'objective'                       => $data['objective'] ?? 'OUTCOME_TRAFFIC',
+            'status'                          => $data['status']    ?? 'PAUSED',
+            'special_ad_categories'           => [],
+            'is_adset_budget_sharing_enabled' => false,
         ]);
     }
 
     public function createAdSet(array $data): array
     {
         $payload = [
-            'name'                            => $data['name'],
-            'campaign_id'                     => $data['campaign_id'],
-            'billing_event'                   => 'IMPRESSIONS',
-            'optimization_goal'               => $data['optimization_goal'] ?? 'REACH',
-            'bid_strategy'                    => 'LOWEST_COST_WITHOUT_CAP',
-            'status'                          => $data['status'] ?? 'PAUSED',
-            'targeting'                       => $data['targeting'] ?? ['geo_locations' => ['countries' => ['BR']]],
-            'is_adset_budget_sharing_enabled' => false,
+            'name'              => $data['name'],
+            'campaign_id'       => $data['campaign_id'],
+            'billing_event'     => 'IMPRESSIONS',
+            'optimization_goal' => $data['optimization_goal'] ?? 'REACH',
+            'bid_strategy'      => 'LOWEST_COST_WITHOUT_CAP',
+            'status'            => $data['status'] ?? 'PAUSED',
+            'targeting'         => $data['targeting'] ?? ['geo_locations' => ['countries' => ['BR']]],
         ];
 
         if (!empty($data['daily_budget'])) {
