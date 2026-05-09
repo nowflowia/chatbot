@@ -125,11 +125,17 @@ class MetaAdsService
 
     public function createAdCreative(array $data): array
     {
-        $objectStory = [];
-
-        if (!empty($this->settings['page_id'])) {
-            $objectStory['page_id'] = $this->settings['page_id'];
+        $pageId = $this->settings['page_id'] ?? '';
+        if (empty($pageId) || !ctype_digit((string)$pageId) || strlen((string)$pageId) < 8) {
+            return ['error' => ['message' =>
+                'Facebook Page ID não configurado ou inválido. ' .
+                'Vá em Administração → META → Credenciais e informe o ID numérico da sua Página do Facebook ' .
+                '(obtenha em facebook.com/SUAPAGINA → Sobre → ID da página).',
+                'code' => 100,
+            ]];
         }
+
+        $objectStory = ['page_id' => $pageId];
 
         if (!empty($data['image_url'])) {
             $objectStory['link_data'] = [
