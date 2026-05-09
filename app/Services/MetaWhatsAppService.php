@@ -187,15 +187,26 @@ class MetaWhatsAppService
      */
     public function getPhoneNumberInfo(): array
     {
-        // display_phone_number requires whatsapp_business_management permission and fails
-        // with #100 if missing — fetch safe fields first, then enrich if available.
-        $result = $this->request('GET', "/{$this->phoneNumberId}?fields=id,verified_name,quality_rating,platform_type,status");
+        // Step 1: verify the ID exists as any Graph object
+        $base = $this->request('GET', "/{$this->phoneNumberId}?fields=id");
+        if (isset($base['error'])) {
+            return $base;
+        }
 
-        if (!isset($result['error'])) {
-            $extra = $this->request('GET', "/{$this->phoneNumberId}?fields=display_phone_number");
-            if (!isset($extra['error']) && !empty($extra['display_phone_number'])) {
-                $result['display_phone_number'] = $extra['display_phone_number'];
-            }
+        // Step 2: try WhatsApp-specific fields (fails if wrong object type)
+        $result = $this->request('GET', "/{$this->phoneNumberId}?fields=id,verified_name,quality_rating,platform_type,status");
+        if (isset($result['error'])) {
+            return ['error' => ['message' =>
+                'O ID inserido não é um Phone Number ID válido do WhatsApp Business. ' .
+                'Localize o ID correto em: Meta Business Suite → WhatsApp → Números de Telefone → selecione o número → copie o ID numérico.',
+                'code' => 100,
+            ]];
+        }
+
+        // Step 3: enrich with display_phone_number if token has the extra permission
+        $extra = $this->request('GET', "/{$this->phoneNumberId}?fields=display_phone_number");
+        if (!isset($extra['error']) && !empty($extra['display_phone_number'])) {
+            $result['display_phone_number'] = $extra['display_phone_number'];
         }
 
         return $result;
