@@ -185,6 +185,10 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
     $router->post('/marketing/meta/agent/{id}/chat',                      ['App\Controllers\MetaMarketingController', 'agentChat'])->middleware('feature:marketing');
     $router->post('/marketing/meta/agent/{id}/execute',                   ['App\Controllers\MetaMarketingController', 'executeAction'])->middleware('feature:marketing');
     $router->get('/marketing/meta/agent/{id}',                            ['App\Controllers\MetaMarketingController', 'getSession'])->middleware('feature:marketing');
+    $router->get('/marketing/meta/agent/{id}/knowledge',                  ['App\Controllers\MetaMarketingController', 'listKnowledge'])->middleware('feature:marketing');
+    $router->post('/marketing/meta/agent/{id}/knowledge/url',             ['App\Controllers\MetaMarketingController', 'addKnowledgeUrl'])->middleware('feature:marketing');
+    $router->post('/marketing/meta/agent/{id}/knowledge/document',        ['App\Controllers\MetaMarketingController', 'addKnowledgeDocument'])->middleware('feature:marketing');
+    $router->post('/marketing/meta/agent/{id}/knowledge/{kid}/delete',    ['App\Controllers\MetaMarketingController', 'deleteKnowledge'])->middleware('feature:marketing');
     $router->post('/marketing/meta/campaigns/{id}/insights',              ['App\Controllers\MetaMarketingController', 'refreshInsights'])->middleware('feature:marketing');
 
     // ── META Admin ────────────────────────────────────────────────

@@ -130,7 +130,8 @@ class MetaMarketingController extends Controller
             }
         }
 
-        $response = $agent->chat($sanitizedHistory, $userMsg);
+        $kbContext = $this->buildKnowledgeContext((int)$id);
+        $response  = $agent->chat($sanitizedHistory, $userMsg, $kbContext);
 
         // Append to history (raw history, not sanitized — preserve all entries)
         $history[] = ['role' => 'user',      'content' => $userMsg];
@@ -390,6 +391,141 @@ class MetaMarketingController extends Controller
                 [$metaAdId, now(), $adsetMetaId]
             );
         }
+    }
+
+    // ── Knowledge Base ──────────────────────────────────────────────
+
+    public function listKnowledge(Request $request, string $id): void
+    {
+        $this->requireMarketing();
+        $items = Database::getInstance()->select(
+            "SELECT id, kind, label, source, mime_type, size_bytes, created_at,
+                    CHAR_LENGTH(content) AS content_chars
+             FROM meta_agent_knowledge WHERE session_id = ? ORDER BY id DESC",
+            [(int)$id]
+        );
+        $this->jsonSuccess('OK', ['items' => $items]);
+    }
+
+    public function addKnowledgeUrl(Request $request, string $id): void
+    {
+        $this->requireMarketing();
+        $url = trim((string)$request->post('url', ''));
+        if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $url)) {
+            $this->jsonError('URL inválida.', [], 422);
+        }
+        $fetched = $this->fetchUrlContent($url);
+        if (isset($fetched['error'])) {
+            $this->jsonError('Falha ao buscar URL: ' . $fetched['error'], [], 422);
+        }
+        $db = Database::getInstance();
+        $db->insert(
+            "INSERT INTO meta_agent_knowledge (session_id, kind, label, source, content, created_at)
+             VALUES (?, 'url', ?, ?, ?, ?)",
+            [(int)$id, $fetched['title'] ?: parse_url($url, PHP_URL_HOST), $url, $fetched['text'] ?? '', now()]
+        );
+        $this->jsonSuccess('Página adicionada à base de conhecimento.');
+    }
+
+    public function addKnowledgeDocument(Request $request, string $id): void
+    {
+        $this->requireMarketing();
+        $file = $_FILES['file'] ?? null;
+        if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $this->jsonError('Arquivo inválido.', [], 422);
+        }
+
+        $allowedExt = ['pdf', 'docx', 'md', 'txt', 'csv'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, $allowedExt, true)) {
+            $this->jsonError('Formato não suportado. Use: ' . implode(', ', $allowedExt), [], 422);
+        }
+        if (($file['size'] ?? 0) > 15 * 1024 * 1024) {
+            $this->jsonError('Arquivo maior que 15 MB.', [], 422);
+        }
+
+        $uploadDir = ROOT_PATH . '/public/uploads/meta-knowledge/' . (int)$id;
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+        $safeName  = preg_replace('/[^A-Za-z0-9._-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
+        $stored    = $uploadDir . '/' . uniqid() . '_' . $safeName . '.' . $ext;
+        if (!move_uploaded_file($file['tmp_name'], $stored)) {
+            $this->jsonError('Falha ao salvar arquivo.', [], 500);
+        }
+
+        $text = $this->extractDocumentText($stored, $ext);
+        if (isset($text['error'])) {
+            @unlink($stored);
+            $this->jsonError($text['error'], [], 422);
+        }
+
+        $db = Database::getInstance();
+        $db->insert(
+            "INSERT INTO meta_agent_knowledge
+                (session_id, kind, label, source, file_path, mime_type, size_bytes, content, created_at)
+             VALUES (?, 'document', ?, ?, ?, ?, ?, ?, ?)",
+            [(int)$id, $file['name'], $file['name'], $stored, $file['type'] ?? '', (int)$file['size'], $text['content'] ?? '', now()]
+        );
+        $this->jsonSuccess('Documento adicionado à base de conhecimento.');
+    }
+
+    public function deleteKnowledge(Request $request, string $id, string $kid): void
+    {
+        $this->requireMarketing();
+        $db = Database::getInstance();
+        $row = $db->selectOne("SELECT * FROM meta_agent_knowledge WHERE id=? AND session_id=?", [(int)$kid, (int)$id]);
+        if (!$row) $this->jsonError('Item não encontrado.', [], 404);
+        if (!empty($row['file_path']) && file_exists($row['file_path'])) @unlink($row['file_path']);
+        $db->delete("DELETE FROM meta_agent_knowledge WHERE id=?", [(int)$kid]);
+        $this->jsonSuccess('Item removido.');
+    }
+
+    private function extractDocumentText(string $path, string $ext): array
+    {
+        switch ($ext) {
+            case 'txt':
+            case 'md':
+            case 'csv':
+                $content = (string) @file_get_contents($path);
+                return ['content' => mb_convert_encoding($content, 'UTF-8', 'auto')];
+
+            case 'pdf':
+                $bin = trim((string) @shell_exec('which pdftotext 2>/dev/null'));
+                if ($bin === '') return ['error' => 'pdftotext não disponível no servidor. Instale poppler-utils ou converta o PDF para TXT/MD.'];
+                $out = @shell_exec('pdftotext -layout ' . escapeshellarg($path) . ' - 2>/dev/null');
+                if ($out === null || $out === '') return ['error' => 'Não foi possível extrair texto do PDF.'];
+                return ['content' => $out];
+
+            case 'docx':
+                $zip = new \ZipArchive();
+                if ($zip->open($path) !== true) return ['error' => 'DOCX inválido.'];
+                $xml = $zip->getFromName('word/document.xml');
+                $zip->close();
+                if (!$xml) return ['error' => 'Não foi possível ler o documento.'];
+                $text = strip_tags(str_replace(['</w:p>', '</w:tab>'], ["\n", "\t"], $xml));
+                $text = html_entity_decode($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
+                return ['content' => trim(preg_replace('/\s+\n/', "\n", $text))];
+        }
+        return ['error' => 'Formato não suportado.'];
+    }
+
+    private function buildKnowledgeContext(int $sessionId): string
+    {
+        $rows = Database::getInstance()->select(
+            "SELECT kind, label, source, content FROM meta_agent_knowledge WHERE session_id = ? ORDER BY id ASC",
+            [$sessionId]
+        );
+        if (empty($rows)) return '';
+
+        $parts = ["════════════════════════════════════════", "BASE DE CONHECIMENTO DESTA CAMPANHA:", "════════════════════════════════════════"];
+        foreach ($rows as $r) {
+            $title = $r['label'] ?: ($r['source'] ?: ($r['kind'] === 'url' ? 'URL' : 'Documento'));
+            $body  = mb_substr((string)$r['content'], 0, 6000); // cap per item
+            $parts[] = "--- " . ($r['kind'] === 'url' ? '🌐 ' : '📄 ') . $title . " ---";
+            if ($r['kind'] === 'url') $parts[] = "Fonte: " . $r['source'];
+            $parts[] = $body;
+            $parts[] = "";
+        }
+        return implode("\n", $parts);
     }
 
     private function fetchUrlContent(string $url): array

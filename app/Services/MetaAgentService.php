@@ -205,7 +205,7 @@ SYSTEM;
      * Send a message to the agent and get a response.
      * $history = array of ['role' => 'user'|'assistant', 'content' => string]
      */
-    public function chat(array $history, string $newUserMessage): array
+    public function chat(array $history, string $newUserMessage, string $extraContext = ''): array
     {
         if (empty($this->apiKey)) {
             return [
@@ -225,7 +225,7 @@ SYSTEM;
         $payload = [
             'model'      => $this->model,
             'max_tokens' => self::MAX_TOKENS,
-            'system'     => $this->buildSystem(),
+            'system'     => $this->buildSystem() . ($extraContext !== '' ? "\n\n" . $extraContext : ''),
             'messages'   => $messages,
         ];
 

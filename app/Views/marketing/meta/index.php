@@ -84,6 +84,43 @@
               <button class="btn btn-sm btn-outline-secondary" onclick="showBriefPanel()" title="Brief rápido">
                 <i class="bi bi-lightning-charge-fill"></i> Brief
               </button>
+              <button class="btn btn-sm btn-outline-success" onclick="toggleKbPanel()" title="Base de conhecimento">
+                <i class="bi bi-journal-text"></i> Base <span class="badge bg-success ms-1" id="kb-count" style="display:none;">0</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Knowledge Base panel -->
+          <div id="kb-panel" class="border rounded p-3 mb-2 bg-white" style="display:none;">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <div class="fw-semibold small"><i class="bi bi-journal-text text-success me-1"></i>Base de Conhecimento</div>
+              <button class="btn btn-sm btn-link text-muted p-0" onclick="document.getElementById('kb-panel').style.display='none'">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <p class="text-muted small mb-2">
+              Adicione URLs, PDFs, DOCX, MD ou TXT — a IA usará todo esse conteúdo como referência ao gerar a campanha.
+            </p>
+
+            <div class="row g-2 mb-2">
+              <div class="col-md-7">
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                  <input type="url" id="kb-url" class="form-control" placeholder="https://exemplo.com/landing-page">
+                  <button class="btn btn-success" onclick="addKbUrl()">Adicionar URL</button>
+                </div>
+              </div>
+              <div class="col-md-5">
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text"><i class="bi bi-file-earmark-arrow-up"></i></span>
+                  <input type="file" id="kb-file" class="form-control" accept=".pdf,.docx,.md,.txt,.csv">
+                  <button class="btn btn-success" onclick="addKbDocument()">Enviar</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="kb-list" class="d-flex flex-column gap-1" style="max-height:200px;overflow-y:auto;">
+              <div class="text-center text-muted small py-2" id="kb-empty">Nenhum item adicionado.</div>
             </div>
           </div>
 
@@ -348,6 +385,93 @@ const META_MK = {
   csrf:      '<?= csrf_token() ?>',
 };
 
+// ── Knowledge Base ────────────────────────────────────────────────
+function toggleKbPanel() {
+  const panel = document.getElementById('kb-panel');
+  const show  = panel.style.display === 'none' || !panel.style.display;
+  panel.style.display = show ? 'block' : 'none';
+  if (show && activeSessionId) loadKnowledge();
+}
+function loadKnowledge() {
+  if (!activeSessionId) return;
+  fetch(META_MK.agent + '/' + activeSessionId + '/knowledge', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(r => r.json())
+    .then(res => renderKnowledge(res.data?.items || []))
+    .catch(() => {});
+}
+function renderKnowledge(items) {
+  const list = document.getElementById('kb-list');
+  const badge = document.getElementById('kb-count');
+  if (!items.length) {
+    list.innerHTML = '<div class="text-center text-muted small py-2" id="kb-empty">Nenhum item adicionado.</div>';
+    badge.style.display = 'none';
+    return;
+  }
+  badge.textContent = items.length;
+  badge.style.display = 'inline';
+  list.innerHTML = items.map(it => {
+    const icon = it.kind === 'url' ? '🌐' : '📄';
+    const label = escHtml(it.label || it.source || 'Item');
+    const meta  = it.kind === 'url'
+      ? `<a href="${escHtml(it.source)}" target="_blank" class="text-muted small text-decoration-none">${escHtml(it.source).slice(0, 60)}…</a>`
+      : `<span class="text-muted small">${(it.size_bytes/1024).toFixed(1)} KB · ${it.content_chars} chars</span>`;
+    return `
+      <div class="d-flex align-items-center gap-2 border rounded px-2 py-1" style="background:#f8fafc;">
+        <span style="font-size:1.1rem;">${icon}</span>
+        <div class="flex-grow-1 min-w-0">
+          <div class="fw-semibold small text-truncate">${label}</div>
+          <div class="text-truncate">${meta}</div>
+        </div>
+        <button class="btn btn-sm btn-link text-danger p-0" onclick="deleteKb(${it.id})" title="Remover">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>`;
+  }).join('');
+}
+function addKbUrl() {
+  if (!activeSessionId) return;
+  const input = document.getElementById('kb-url');
+  const url = input.value.trim();
+  if (!url) return;
+  const fd = new FormData(); fd.append('_csrf_token', META_MK.csrf); fd.append('url', url);
+  fetch(META_MK.agent + '/' + activeSessionId + '/knowledge/url', {
+    method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+    .then(r => r.json())
+    .then(res => {
+      if (res.success) { input.value = ''; loadKnowledge(); Toast.show(res.message, 'success'); }
+      else Toast.show(res.message, 'error');
+    })
+    .catch(() => Toast.show('Erro de conexão.', 'error'));
+}
+function addKbDocument() {
+  if (!activeSessionId) return;
+  const input = document.getElementById('kb-file');
+  if (!input.files.length) return;
+  const fd = new FormData();
+  fd.append('_csrf_token', META_MK.csrf);
+  fd.append('file', input.files[0]);
+  fetch(META_MK.agent + '/' + activeSessionId + '/knowledge/document', {
+    method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+    .then(r => r.json())
+    .then(res => {
+      if (res.success) { input.value = ''; loadKnowledge(); Toast.show(res.message, 'success'); }
+      else Toast.show(res.message, 'error');
+    })
+    .catch(() => Toast.show('Erro de conexão.', 'error'));
+}
+function deleteKb(kid) {
+  if (!confirm('Remover este item da base de conhecimento?')) return;
+  const fd = new FormData(); fd.append('_csrf_token', META_MK.csrf);
+  fetch(META_MK.agent + '/' + activeSessionId + '/knowledge/' + kid + '/delete', {
+    method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+    .then(r => r.json())
+    .then(res => { if (res.success) loadKnowledge(); else Toast.show(res.message, 'error'); })
+    .catch(() => Toast.show('Erro de conexão.', 'error'));
+}
+
 let activeSessionId = null;
 let newSessionModal;
 let adPreviewModal;
@@ -403,6 +527,8 @@ function loadSession(id, titleOverride) {
   if (el) el.classList.add('bg-primary','bg-opacity-10');
 
   activeSessionId = id;
+  loadKnowledge();
+  document.getElementById('kb-panel').style.display = 'none';
   document.getElementById('agent-empty').style.display = 'none';
   const chat = document.getElementById('agent-chat');
   chat.style.display = null;
