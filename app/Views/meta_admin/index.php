@@ -147,6 +147,36 @@ $stMap = [
         </form>
       </div>
     </div>
+
+    <!-- ── Log Viewer ──────────────────────────────────────────────── -->
+    <div class="card border-0 shadow-sm mt-4">
+      <div class="card-header bg-white d-flex align-items-center justify-content-between py-3 flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-terminal text-secondary"></i>
+          <span class="fw-semibold">Log da aplicação</span>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <div class="btn-group btn-group-sm" role="group">
+            <button id="filter-meta" class="btn btn-primary btn-sm" onclick="setFilter('meta')">META / Imagens</button>
+            <button id="filter-all"  class="btn btn-outline-secondary btn-sm" onclick="setFilter('all')">Todos</button>
+          </div>
+          <input type="date" id="log-date" class="form-control form-control-sm" style="width:150px"
+                 value="<?= date('Y-m-d') ?>" onchange="loadLogs()">
+          <button class="btn btn-sm btn-outline-secondary" onclick="loadLogs()">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger" onclick="clearLogs()">
+            <i class="bi bi-trash"></i> Limpar
+          </button>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div id="log-output" style="background:#0f172a;color:#e2e8f0;font-family:monospace;font-size:.78rem;
+             height:300px;overflow-y:auto;padding:1rem;border-radius:0 0 .5rem .5rem;">
+          <span class="text-muted">Carregando logs...</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Guia -->
@@ -257,35 +287,7 @@ $stMap = [
 
 </div>
 
-<!-- ── Log Viewer ───────────────────────────────────────────────────── -->
-<div class="card border-0 shadow-sm mt-4">
-  <div class="card-header bg-white d-flex align-items-center justify-content-between py-3 flex-wrap gap-2">
-    <div class="d-flex align-items-center gap-2">
-      <i class="bi bi-terminal text-secondary"></i>
-      <span class="fw-semibold">Log da aplicação</span>
-    </div>
-    <div class="d-flex align-items-center gap-2 flex-wrap">
-      <div class="btn-group btn-group-sm" role="group">
-        <button id="filter-meta" class="btn btn-primary" onclick="setFilter('meta')">META / Imagens</button>
-        <button id="filter-all"  class="btn btn-outline-secondary" onclick="setFilter('all')">Todos</button>
-      </div>
-      <input type="date" id="log-date" class="form-control form-control-sm" style="width:160px"
-             value="<?= date('Y-m-d') ?>" onchange="loadLogs()">
-      <button class="btn btn-sm btn-outline-secondary" onclick="loadLogs()">
-        <i class="bi bi-arrow-clockwise"></i> Atualizar
-      </button>
-      <button class="btn btn-sm btn-outline-danger" onclick="clearLogs()">
-        <i class="bi bi-trash"></i> Limpar
-      </button>
-    </div>
-  </div>
-  <div class="card-body p-0">
-    <div id="log-output" style="background:#0f172a;color:#e2e8f0;font-family:monospace;font-size:.78rem;
-         height:320px;overflow-y:auto;padding:1rem;border-radius:0 0 .5rem .5rem;">
-      <span class="text-muted">Carregando logs...</span>
-    </div>
-  </div>
-</div>
+
 
 <?php \Core\View::endSection() ?>
 <?php \Core\View::section('scripts') ?>
