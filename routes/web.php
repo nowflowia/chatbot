@@ -179,6 +179,8 @@ $router->group(['prefix' => 'admin', 'middleware' => ['auth']], function (Router
 
     // ── META Marketing (AI Agent) ─────────────────────────────────
     $router->get('/marketing/meta',                                       ['App\Controllers\MetaMarketingController', 'index'])->middleware('feature:marketing');
+    $router->get('/marketing/meta/reports',                               ['App\Controllers\MetaMarketingController', 'reports'])->middleware('feature:marketing');
+    $router->post('/marketing/meta/campaigns/{id}/refresh-insights',      ['App\Controllers\MetaMarketingController', 'refreshInsights'])->middleware('feature:marketing');
     $router->post('/marketing/meta/agent/session',                        ['App\Controllers\MetaMarketingController', 'startSession'])->middleware('feature:marketing');
     $router->post('/marketing/meta/agent/{id}/chat',                      ['App\Controllers\MetaMarketingController', 'agentChat'])->middleware('feature:marketing');
     $router->post('/marketing/meta/agent/{id}/execute',                   ['App\Controllers\MetaMarketingController', 'executeAction'])->middleware('feature:marketing');

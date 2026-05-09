@@ -180,9 +180,15 @@ $adminOpen      = isGroupOpen(['users', 'webhook-logs', 'settings', 'ai-config',
           </a>
         </li>
         <li>
-          <a href="<?= url('admin/marketing/meta') ?>" class="nav-link nav-sub<?= isActive('marketing/meta') ?>">
+          <a href="<?= url('admin/marketing/meta') ?>" class="nav-link nav-sub<?= isActive('marketing/meta') && !isActive('marketing/meta/reports') ? ' active' : '' ?>">
             <i class="bi bi-meta" style="color:#1877f2;"></i>
-            <span class="link-label">META</span>
+            <span class="link-label">META Ads IA</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="<?= url('admin/marketing/meta/reports') ?>" class="nav-link nav-sub<?= isActive('marketing/meta/reports') ?>">
+            <i class="bi bi-bar-chart-fill" style="color:#7c3aed;"></i>
+            <span class="link-label">Relatórios META</span>
           </a>
         </li>
       </ul>

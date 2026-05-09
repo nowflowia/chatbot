@@ -38,6 +38,31 @@ class MetaMarketingController extends Controller
         ]);
     }
 
+    // ── GET /admin/marketing/meta/reports ───────────────────────────
+
+    public function reports(Request $request): string
+    {
+        $this->requireMarketing();
+
+        $db        = Database::getInstance();
+        $campaigns = $db->select(
+            "SELECT c.*, u.name as creator_name
+             FROM meta_campaigns c
+             LEFT JOIN users u ON u.id = c.created_by
+             ORDER BY c.created_at DESC"
+        );
+
+        foreach ($campaigns as &$c) {
+            $c['insights']       = !empty($c['insights'])       ? json_decode($c['insights'], true)       : null;
+            $c['ad_copy']        = !empty($c['ad_copy'])        ? json_decode($c['ad_copy'], true)         : null;
+            $c['target_audience']= !empty($c['target_audience'])? json_decode($c['target_audience'], true) : null;
+            $c['platforms']      = !empty($c['platforms'])      ? json_decode($c['platforms'], true)       : [];
+        }
+        unset($c);
+
+        return $this->view('marketing/meta/reports', ['campaigns' => $campaigns]);
+    }
+
     // ── POST /admin/marketing/meta/agent/session ─────────────────────
     // Start a new agent session
 
