@@ -90,9 +90,24 @@ class MetaMarketingController extends Controller
         }
 
         $agent    = new MetaAgentService();
-        $response = $agent->chat($history, $userMsg);
 
-        // Append to history
+        // Merge consecutive same-role messages before sending to Anthropic.
+        // appendAgentMessage writes action results as 'user' role; if the user
+        // then sends another message we'd have two consecutive 'user' entries
+        // which the Anthropic API rejects. Merge them into one.
+        $sanitizedHistory = [];
+        foreach ($history as $msg) {
+            $last = end($sanitizedHistory);
+            if ($last && $last['role'] === $msg['role']) {
+                $sanitizedHistory[count($sanitizedHistory) - 1]['content'] .= "\n\n" . $msg['content'];
+            } else {
+                $sanitizedHistory[] = $msg;
+            }
+        }
+
+        $response = $agent->chat($sanitizedHistory, $userMsg);
+
+        // Append to history (raw history, not sanitized — preserve all entries)
         $history[] = ['role' => 'user',      'content' => $userMsg];
         $history[] = ['role' => 'assistant', 'content' => $response['raw'] ?? $response['content'], 'actions' => $response['actions']];
 
@@ -336,7 +351,8 @@ class MetaMarketingController extends Controller
     {
         $session  = $db->selectOne("SELECT messages FROM meta_agent_sessions WHERE id=? LIMIT 1", [$sessionId]);
         $history  = json_decode($session['messages'] ?? '[]', true) ?: [];
-        $history[] = ['role' => 'assistant', 'content' => $content, 'actions' => [], 'system' => true];
+        // Must be 'user' role so Anthropic alternation rule is respected (assistant→user→assistant)
+        $history[] = ['role' => 'user', 'content' => "[Sistema]: {$content}", 'actions' => [], 'system' => true];
         $db->update("UPDATE meta_agent_sessions SET messages=?, updated_at=? WHERE id=?",
             [json_encode($history), now(), $sessionId]);
     }
