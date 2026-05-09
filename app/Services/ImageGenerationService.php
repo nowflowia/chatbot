@@ -32,6 +32,7 @@ class ImageGenerationService
     public function generate(string $prompt, string $size = '1024x1024'): array
     {
         if (!$this->isConfigured()) {
+            logger('ImageGenerationService: API Key não configurada', 'error');
             return ['error' => 'OpenAI API Key não configurada. Configure em Administração → META → Geração de Imagens.'];
         }
 
@@ -45,6 +46,8 @@ class ImageGenerationService
             'n'      => 1,
             'size'   => $size,
         ];
+
+        logger('ImageGenerationService: iniciando geração — model=' . self::MODEL . ' size=' . $size . ' prompt=' . mb_substr($prompt, 0, 120));
 
         $ch = curl_init(self::API_URL);
         curl_setopt_array($ch, [
@@ -64,6 +67,7 @@ class ImageGenerationService
         curl_close($ch);
 
         if ($err) {
+            logger('ImageGenerationService: cURL error — ' . $err, 'error');
             return ['error' => "Erro de conexão: {$err}"];
         }
 
@@ -71,6 +75,7 @@ class ImageGenerationService
 
         if ($code !== 200 || isset($data['error'])) {
             $msg = $data['error']['message'] ?? "Erro HTTP {$code}";
+            logger('ImageGenerationService: API error HTTP ' . $code . ' — ' . $msg, 'error');
             return ['error' => "Erro da API OpenAI: {$msg}"];
         }
 
@@ -93,9 +98,11 @@ class ImageGenerationService
         }
 
         if (empty($urls)) {
+            logger('ImageGenerationService: API retornou resposta vazia — body=' . mb_substr($body, 0, 300), 'error');
             return ['error' => 'Nenhuma imagem retornada pela API.'];
         }
 
+        logger('ImageGenerationService: ' . count($urls) . ' imagem(ns) gerada(s) com sucesso — ' . implode(', ', $urls));
         return ['images' => $urls];
     }
 }

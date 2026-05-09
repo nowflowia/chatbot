@@ -220,6 +220,29 @@ $stMap = [
 
 </div>
 
+<!-- ── Log Viewer ───────────────────────────────────────────────────── -->
+<div class="card border-0 shadow-sm mt-4">
+  <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-terminal text-secondary"></i>
+      <span class="fw-semibold">Log da aplicação</span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <input type="date" id="log-date" class="form-control form-control-sm" style="width:160px"
+             value="<?= date('Y-m-d') ?>" onchange="loadLogs()">
+      <button class="btn btn-sm btn-outline-secondary" onclick="loadLogs()">
+        <i class="bi bi-arrow-clockwise"></i> Atualizar
+      </button>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <div id="log-output" style="background:#0f172a;color:#e2e8f0;font-family:monospace;font-size:.78rem;
+         height:320px;overflow-y:auto;padding:1rem;border-radius:0 0 .5rem .5rem;">
+      <span class="text-muted">Carregando logs...</span>
+    </div>
+  </div>
+</div>
+
 <?php \Core\View::endSection() ?>
 <?php \Core\View::section('scripts') ?>
 <script>
@@ -227,6 +250,7 @@ const META_ADMIN = {
   save:      '<?= url('admin/meta/settings') ?>',
   test:      '<?= url('admin/meta/test') ?>',
   openaiKey: '<?= url('admin/meta/openai-key') ?>',
+  logs:      '<?= url('admin/meta/logs') ?>',
 };
 function saveMetaSettings() {
   toggle('save', true);
@@ -285,5 +309,30 @@ function toggleKeyVis() {
   inp.type = isPass ? 'text' : 'password';
   icon.className = isPass ? 'bi bi-eye-slash' : 'bi bi-eye';
 }
+
+function loadLogs() {
+  const date = document.getElementById('log-date').value;
+  const out  = document.getElementById('log-output');
+  out.innerHTML = '<span class="text-muted">Carregando...</span>';
+  fetch(META_ADMIN.logs + '?date=' + encodeURIComponent(date), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(r => r.json())
+    .then(res => {
+      const lines = res.data?.lines ?? [];
+      if (!lines.length) { out.innerHTML = '<span class="text-slate-400">Nenhum log para esta data.</span>'; return; }
+      out.innerHTML = lines.map(l => {
+        let cls = 'color:#e2e8f0';
+        if (l.includes('] error:'))   cls = 'color:#f87171';
+        if (l.includes('] warning:')) cls = 'color:#fbbf24';
+        if (l.includes('ImageGen'))   cls = 'color:#34d399';
+        if (l.includes('MetaAgent')) cls = 'color:#60a5fa';
+        return `<div style="${cls};white-space:pre-wrap;word-break:break-all;margin-bottom:2px">${escHtml(l)}</div>`;
+      }).join('');
+      out.scrollTop = 0;
+    })
+    .catch(() => { out.innerHTML = '<span style="color:#f87171">Erro ao carregar logs.</span>'; });
+}
+
+document.addEventListener('DOMContentLoaded', loadLogs);
+setInterval(loadLogs, 15000);
 </script>
 <?php \Core\View::endSection() ?>

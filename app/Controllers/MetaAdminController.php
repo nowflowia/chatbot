@@ -61,6 +61,21 @@ class MetaAdminController extends Controller
         $this->jsonSuccess('Chave OpenAI salva com sucesso!');
     }
 
+    // ── GET /admin/meta/logs ─────────────────────────────────────────
+
+    public function logs(Request $request): void
+    {
+        $this->requireAdmin();
+        $date    = $request->get('date', date('Y-m-d'));
+        $logFile = storage_path('logs/' . basename($date) . '.log');
+        $lines   = [];
+        if (file_exists($logFile)) {
+            $all   = file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+            $lines = array_slice(array_reverse($all), 0, 200);
+        }
+        $this->jsonSuccess('OK', ['lines' => $lines, 'date' => $date]);
+    }
+
     // ── POST /admin/meta/test ────────────────────────────────────────
 
     public function testConnection(Request $request): void
