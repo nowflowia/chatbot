@@ -65,6 +65,37 @@ class MetaAdsService
 
     public function createAdSet(array $data): array
     {
+        if (empty($data['campaign_id'])) {
+            return ['error' => ['message' => 'campaign_id é obrigatório. Use o ID retornado por create_campaign.']];
+        }
+
+        $targeting = $data['targeting'] ?? ['geo_locations' => ['countries' => ['BR']]];
+
+        // Strip invalid interests (Meta requires numeric IDs from its taxonomy)
+        if (isset($targeting['interests']) && is_array($targeting['interests'])) {
+            $valid = array_filter($targeting['interests'], function ($i) {
+                if (is_array($i)) return !empty($i['id']) && ctype_digit((string)$i['id']);
+                return ctype_digit((string)$i);
+            });
+            if (empty($valid)) {
+                unset($targeting['interests']);
+            } else {
+                $targeting['interests'] = array_values($valid);
+            }
+        }
+
+        // Same for behaviors / detailed_targeting
+        foreach (['behaviors', 'detailed_targeting'] as $field) {
+            if (isset($targeting[$field]) && is_array($targeting[$field])) {
+                $valid = array_filter($targeting[$field], function ($i) {
+                    if (is_array($i)) return !empty($i['id']) && ctype_digit((string)$i['id']);
+                    return ctype_digit((string)$i);
+                });
+                if (empty($valid)) unset($targeting[$field]);
+                else $targeting[$field] = array_values($valid);
+            }
+        }
+
         $payload = [
             'name'              => $data['name'],
             'campaign_id'       => $data['campaign_id'],
@@ -72,7 +103,7 @@ class MetaAdsService
             'optimization_goal' => $data['optimization_goal'] ?? 'REACH',
             'bid_strategy'      => 'LOWEST_COST_WITHOUT_CAP',
             'status'            => $data['status'] ?? 'PAUSED',
-            'targeting'         => $data['targeting'] ?? ['geo_locations' => ['countries' => ['BR']]],
+            'targeting'         => $targeting,
         ];
 
         if (!empty($data['daily_budget'])) {
