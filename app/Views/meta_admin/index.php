@@ -206,6 +206,32 @@ $stMap = [
       </div>
     </div>
 
+    <!-- Claude Model Selector -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body px-4 py-3">
+        <h6 class="fw-bold mb-2">
+          <i class="bi bi-robot text-primary me-2"></i>Modelo Claude — Agente META
+        </h6>
+        <p class="text-muted small mb-3">
+          Escolha o modelo Claude usado exclusivamente pelo agente META Ads.
+          Não afeta o modelo do chat de atendimento.
+        </p>
+        <div id="model-alert"></div>
+        <select id="meta-ai-model" class="form-select form-select-sm mb-3">
+          <?php foreach ($aiModels ?? [] as $modelId => $modelLabel): ?>
+          <option value="<?= e($modelId) ?>"
+            <?= ($settings['ai_model'] ?? 'claude-sonnet-4-6') === $modelId ? 'selected' : '' ?>>
+            <?= e($modelLabel) ?>
+          </option>
+          <?php endforeach; ?>
+        </select>
+        <button class="btn btn-primary btn-sm w-100 fw-semibold" onclick="saveMetaModel()">
+          <span class="spinner-border spinner-border-sm d-none me-1" id="model-spin"></span>
+          <i class="bi bi-floppy me-1" id="model-icon"></i>Salvar modelo
+        </button>
+      </div>
+    </div>
+
     <div class="card border-0 shadow-sm">
       <div class="card-body px-4 py-3">
         <h6 class="fw-bold mb-2"><i class="bi bi-shield-check text-success me-2"></i>Permissões necessárias</h6>
@@ -257,6 +283,7 @@ const META_ADMIN = {
   save:      '<?= url('admin/meta/settings') ?>',
   test:      '<?= url('admin/meta/test') ?>',
   openaiKey: '<?= url('admin/meta/openai-key') ?>',
+  aiModel:   '<?= url('admin/meta/ai-model') ?>',
   logs:      '<?= url('admin/meta/logs') ?>',
   logsClear: '<?= url('admin/meta/logs/clear') ?>',
 };
@@ -286,6 +313,28 @@ function toggle(id, loading) {
   document.getElementById(id+'-icon').classList.toggle('d-none', loading);
 }
 function escHtml(s) { const d=document.createElement('div'); d.appendChild(document.createTextNode(String(s))); return d.innerHTML; }
+
+function saveMetaModel() {
+  document.getElementById('model-spin').classList.remove('d-none');
+  document.getElementById('model-icon').classList.add('d-none');
+  document.getElementById('model-alert').innerHTML = '';
+  const fd = new FormData();
+  fd.append('_csrf_token', '<?= csrf_token() ?>');
+  fd.append('ai_model', document.getElementById('meta-ai-model').value);
+  fetch(META_ADMIN.aiModel, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(r => r.json())
+    .then(res => {
+      document.getElementById('model-spin').classList.add('d-none');
+      document.getElementById('model-icon').classList.remove('d-none');
+      if (res.success) {
+        document.getElementById('model-alert').innerHTML =
+          `<div class="alert alert-success py-2 small mb-2"><i class="bi bi-check-circle-fill me-1"></i>${escHtml(res.message)}</div>`;
+      } else {
+        Toast.show(res.message, 'error');
+      }
+    })
+    .catch(() => { document.getElementById('model-spin').classList.add('d-none'); document.getElementById('model-icon').classList.remove('d-none'); Toast.show('Erro de conexão.', 'error'); });
+}
 
 function saveOpenAiKey() {
   const spin = document.getElementById('oai-spin');

@@ -30,6 +30,7 @@ class MetaAdSetting extends Model
             'page_id'             => $data['page_id']             ?? null,
             'instagram_actor_id'  => $data['instagram_actor_id']  ?? null,
             'api_version'         => $data['api_version']         ?? 'v21.0',
+            'ai_model'            => $data['ai_model']            ?? 'claude-sonnet-4-6',
             'updated_at'          => now(),
         ];
 

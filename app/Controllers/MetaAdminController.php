@@ -28,6 +28,7 @@ class MetaAdminController extends Controller
             'aiConfigured'  => !empty($ai['api_key']),
             'openaiKey'     => !empty($openai['api_key']) ? substr($openai['api_key'], 0, 7) . '••••••••••••' : '',
             'openaiOk'      => !empty($openai['api_key']),
+            'aiModels'      => \App\Services\MetaAgentService::MODELS,
         ]);
     }
 
@@ -49,6 +50,22 @@ class MetaAdminController extends Controller
         ]);
 
         $this->jsonSuccess('Configurações salvas!');
+    }
+
+    // ── POST /admin/meta/ai-model ────────────────────────────────────
+
+    public function saveAiModel(Request $request): void
+    {
+        $this->requireAdmin();
+        $model = trim((string) $request->post('ai_model', 'claude-sonnet-4-6'));
+        if (!array_key_exists($model, \App\Services\MetaAgentService::MODELS)) {
+            $this->jsonError('Modelo inválido.', [], 422);
+        }
+        $existing = MetaAdSetting::getActive();
+        if ($existing) {
+            MetaAdSetting::saveSettings(array_merge($existing, ['ai_model' => $model]));
+        }
+        $this->jsonSuccess('Modelo salvo: ' . \App\Services\MetaAgentService::MODELS[$model]);
     }
 
     // ── POST /admin/meta/openai-key ──────────────────────────────

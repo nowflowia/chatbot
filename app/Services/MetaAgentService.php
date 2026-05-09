@@ -11,17 +11,30 @@ use App\Models\AiSetting;
  */
 class MetaAgentService
 {
-    private const MODEL        = 'claude-sonnet-4-6';
-    private const MAX_TOKENS   = 4096;
-    private const API_URL      = 'https://api.anthropic.com/v1/messages';
-    private const API_VERSION  = '2023-06-01';
+    private const DEFAULT_MODEL = 'claude-sonnet-4-6';
+    private const MAX_TOKENS    = 4096;
+    private const API_URL       = 'https://api.anthropic.com/v1/messages';
+    private const API_VERSION   = '2023-06-01';
+
+    public const MODELS = [
+        'claude-opus-4-7'           => 'Claude Opus 4.7 — Mais inteligente',
+        'claude-sonnet-4-6'         => 'Claude Sonnet 4.6 — Recomendado',
+        'claude-haiku-4-5-20251001' => 'Claude Haiku 4.5 — Mais rápido',
+    ];
 
     private string $apiKey;
+    private string $model;
 
     public function __construct()
     {
         $row           = AiSetting::get('anthropic');
         $this->apiKey  = $row['api_key'] ?? '';
+
+        $metaSettings  = \App\Models\MetaAdSetting::getActive();
+        $this->model   = $metaSettings['ai_model'] ?? self::DEFAULT_MODEL;
+        if (!array_key_exists($this->model, self::MODELS)) {
+            $this->model = self::DEFAULT_MODEL;
+        }
     }
 
     // ── System prompt ────────────────────────────────────────────────
@@ -151,7 +164,7 @@ SYSTEM;
         $messages[] = ['role' => 'user', 'content' => $newUserMessage];
 
         $payload = [
-            'model'      => self::MODEL,
+            'model'      => $this->model,
             'max_tokens' => self::MAX_TOKENS,
             'system'     => $this->systemPrompt(),
             'messages'   => $messages,
