@@ -187,7 +187,18 @@ class MetaWhatsAppService
      */
     public function getPhoneNumberInfo(): array
     {
-        return $this->request('GET', "/{$this->phoneNumberId}?fields=id,display_phone_number,verified_name,quality_rating,platform_type,status");
+        // display_phone_number requires whatsapp_business_management permission and fails
+        // with #100 if missing — fetch safe fields first, then enrich if available.
+        $result = $this->request('GET', "/{$this->phoneNumberId}?fields=id,verified_name,quality_rating,platform_type,status");
+
+        if (!isset($result['error'])) {
+            $extra = $this->request('GET', "/{$this->phoneNumberId}?fields=display_phone_number");
+            if (!isset($extra['error']) && !empty($extra['display_phone_number'])) {
+                $result['display_phone_number'] = $extra['display_phone_number'];
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -260,9 +271,12 @@ class MetaWhatsAppService
             $phone   = $result['display_phone_number'] ?? '';
             $name    = $result['verified_name']        ?? '';
             $quality = $result['quality_rating']       ?? '';
+            $label   = $phone ?: ($name ?: $result['id']);
+            $suffix  = $quality ? " — Qualidade: {$quality}" : '';
+            $nameStr = ($name && $phone) ? " ({$name})" : '';
             return [
                 'ok'      => true,
-                'message' => "Conectado! Número: {$phone} ({$name}) — Qualidade: {$quality}",
+                'message' => "Conectado! {$label}{$nameStr}{$suffix}",
                 'data'    => $result,
             ];
         }
