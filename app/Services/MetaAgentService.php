@@ -241,6 +241,10 @@ SYSTEM;
 
         foreach ($matches[1] as $i => $json) {
             $trimmed = trim($json);
+            // Strip markdown code fences the AI sometimes wraps around JSON
+            $trimmed = preg_replace('/^```(?:json)?\s*/i', '', $trimmed);
+            $trimmed = preg_replace('/\s*```$/', '', $trimmed);
+            $trimmed = trim($trimmed);
             $decoded = json_decode($trimmed, true);
             if (is_array($decoded) && isset($decoded['type'])) {
                 $actions[] = $decoded;
