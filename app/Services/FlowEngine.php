@@ -77,6 +77,10 @@ class FlowEngine
         );
         $this->chat['flow_id'] = $flow['id'];
 
+        // Make the triggering message available to the start node (e.g. AI block)
+        $this->vars['_last_input'] = $text;
+        $this->saveVars();
+
         // Execute start node
         $this->executeNode($startNode);
         return true;
@@ -304,16 +308,13 @@ class FlowEngine
                         }
                     } catch (\Throwable $e) {
                         logger('FlowEngine ai error: ' . $e->getMessage(), 'error');
-                        $msg = 'Desculpe, estou com dificuldade em responder agora. Vou transferir para um atendente.';
+                        $msg = 'Desculpe, estou com dificuldade em responder agora. Tente novamente em instantes.';
                         $this->send($msg);
                         $this->saveOutboundMessage($msg);
-                        // Fallback: hand off to queue
-                        $this->db->update(
-                            "UPDATE chats SET is_bot_active = 0, status = 'waiting', current_node_id = NULL, updated_at = ? WHERE id = ?",
-                            [now(), $this->chat['id']]
-                        );
-                        unset($this->vars[$turnsKey]);
-                        $this->saveVars();
+                        // Keep bot active — stay on current node so next message retries
+                        if ($multiTurn) {
+                            $this->setCurrentNode($node['id']);
+                        }
                         break;
                     }
                 }
