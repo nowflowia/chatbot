@@ -195,6 +195,18 @@ SYSTEM;
 
         // Parse [ACTION]...[/ACTION] blocks
         $actions = $this->parseActions($text);
+
+        $actionCount = count($actions);
+        $hasBlocks   = preg_match('/\[ACTION\]/i', $text) ? 'sim' : 'NÃO';
+        logger("MetaAgent: resposta recebida — chars=" . strlen($text) . " tem_[ACTION]={$hasBlocks} actions_parseadas={$actionCount}");
+        if ($actionCount === 0 && $hasBlocks === 'sim') {
+            // Blocks found in text but JSON parsing failed — log a snippet for diagnosis
+            logger('MetaAgent: [ACTION] encontrado mas JSON inválido — trecho: ' . mb_substr($text, 0, 400), 'error');
+        }
+        foreach ($actions as $i => $a) {
+            logger('MetaAgent: action[' . $i . '] type=' . ($a['type'] ?? '?') . ' desc=' . mb_substr($a['description'] ?? '', 0, 80));
+        }
+
         // Strip raw action blocks from displayed text for cleaner rendering
         $display = preg_replace('/\[ACTION\].*?\[\/ACTION\]/s', '', $text);
         $display = trim(preg_replace('/\n{3,}/', "\n\n", $display));
@@ -214,10 +226,13 @@ SYSTEM;
         $actions = [];
         preg_match_all('/\[ACTION\](.*?)\[\/ACTION\]/s', $text, $matches);
 
-        foreach ($matches[1] as $json) {
-            $decoded = json_decode(trim($json), true);
+        foreach ($matches[1] as $i => $json) {
+            $trimmed = trim($json);
+            $decoded = json_decode($trimmed, true);
             if (is_array($decoded) && isset($decoded['type'])) {
                 $actions[] = $decoded;
+            } else {
+                logger('MetaAgent: parseActions bloco[' . $i . '] JSON inválido (err=' . json_last_error_msg() . ') — raw=' . mb_substr($trimmed, 0, 200), 'error');
             }
         }
 
