@@ -77,6 +77,11 @@ class MetaAdminController extends Controller
         $this->requireAdmin();
         $key   = trim((string) $request->post('api_key', ''));
         $model = trim((string) $request->post('image_model', 'gpt-image-1'));
+
+        if (!empty($key) && str_starts_with($key, 'sk-ant-')) {
+            $this->jsonError('Chave inválida: essa é uma chave Anthropic (sk-ant-...). Informe a chave OpenAI, obtida em platform.openai.com → API keys.', [], 422);
+        }
+
         if (!array_key_exists($model, \App\Services\ImageGenerationService::MODELS)) {
             $model = 'gpt-image-1';
         }
