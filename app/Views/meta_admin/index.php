@@ -270,6 +270,24 @@ $stMap = [
           <span class="spinner-border spinner-border-sm d-none me-1" id="model-spin"></span>
           <i class="bi bi-floppy me-1" id="model-icon"></i>Salvar modelo
         </button>
+
+        <hr class="my-3">
+
+        <h6 class="fw-bold mb-2">
+          <i class="bi bi-person-badge text-success me-2"></i>Persona do Agente
+        </h6>
+        <p class="text-muted small mb-2">
+          Instruções adicionais que serão concatenadas ao prompt base do agente.
+          Use para definir tom, estratégias preferidas, marcas, restrições da empresa, etc.
+        </p>
+        <div id="persona-alert"></div>
+        <textarea id="agent-persona" class="form-control font-monospace mb-2"
+                  rows="8" style="font-size:.78rem;"
+                  placeholder="Ex: Você é especialista em campanhas para o setor financeiro brasileiro. Sempre priorize objetivo de Leads. Use copy direto, com prova social..."><?= e($settings['agent_persona'] ?? '') ?></textarea>
+        <button class="btn btn-success btn-sm w-100 fw-semibold" onclick="savePersona()">
+          <span class="spinner-border spinner-border-sm d-none me-1" id="persona-spin"></span>
+          <i class="bi bi-floppy me-1" id="persona-icon"></i>Salvar persona
+        </button>
       </div>
     </div>
 
@@ -297,6 +315,7 @@ const META_ADMIN = {
   test:      '<?= url('admin/meta/test') ?>',
   openaiKey: '<?= url('admin/meta/openai-key') ?>',
   aiModel:   '<?= url('admin/meta/ai-model') ?>',
+  persona:   '<?= url('admin/meta/persona') ?>',
   logs:      '<?= url('admin/meta/logs') ?>',
   logsClear: '<?= url('admin/meta/logs/clear') ?>',
 };
@@ -347,6 +366,26 @@ function saveMetaModel() {
       }
     })
     .catch(() => { document.getElementById('model-spin').classList.add('d-none'); document.getElementById('model-icon').classList.remove('d-none'); Toast.show('Erro de conexão.', 'error'); });
+}
+
+function savePersona() {
+  document.getElementById('persona-spin').classList.remove('d-none');
+  document.getElementById('persona-icon').classList.add('d-none');
+  document.getElementById('persona-alert').innerHTML = '';
+  const fd = new FormData();
+  fd.append('_csrf_token', '<?= csrf_token() ?>');
+  fd.append('agent_persona', document.getElementById('agent-persona').value);
+  fetch(META_ADMIN.persona, { method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'} })
+    .then(r => r.json())
+    .then(res => {
+      document.getElementById('persona-spin').classList.add('d-none');
+      document.getElementById('persona-icon').classList.remove('d-none');
+      if (res.success) {
+        document.getElementById('persona-alert').innerHTML =
+          `<div class="alert alert-success py-2 small mb-2"><i class="bi bi-check-circle-fill me-1"></i>${escHtml(res.message)}</div>`;
+      } else Toast.show(res.message, 'error');
+    })
+    .catch(() => { document.getElementById('persona-spin').classList.add('d-none'); document.getElementById('persona-icon').classList.remove('d-none'); Toast.show('Erro de conexão.', 'error'); });
 }
 
 function saveOpenAiKey() {

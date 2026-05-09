@@ -70,6 +70,19 @@ class MetaAdminController extends Controller
         $this->jsonSuccess('Modelo salvo: ' . \App\Services\MetaAgentService::MODELS[$model]);
     }
 
+    // ── POST /admin/meta/persona ────────────────────────────────────
+
+    public function savePersona(Request $request): void
+    {
+        $this->requireAdmin();
+        $persona  = (string) $request->post('agent_persona', '');
+        $existing = MetaAdSetting::getActive();
+        if ($existing) {
+            MetaAdSetting::saveSettings(array_merge($existing, ['agent_persona' => $persona]));
+        }
+        $this->jsonSuccess($persona === '' ? 'Persona removida.' : 'Persona salva!');
+    }
+
     // ── POST /admin/meta/openai-key ──────────────────────────────
 
     public function saveOpenAiKey(Request $request): void

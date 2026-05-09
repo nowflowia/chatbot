@@ -39,6 +39,14 @@ class MetaAgentService
 
     // ── System prompt ────────────────────────────────────────────────
 
+    private function buildSystem(): string
+    {
+        $base    = $this->systemPrompt();
+        $persona = trim((string)(\App\Models\MetaAdSetting::getActive()['agent_persona'] ?? ''));
+        if ($persona === '') return $base;
+        return $base . "\n\n════════════════════════════════════════\nPERSONA / INSTRUÇÕES ADICIONAIS DO CLIENTE:\n════════════════════════════════════════\n" . $persona;
+    }
+
     private function systemPrompt(): string
     {
         return <<<'SYSTEM'
@@ -214,7 +222,7 @@ SYSTEM;
         $payload = [
             'model'      => $this->model,
             'max_tokens' => self::MAX_TOKENS,
-            'system'     => $this->systemPrompt(),
+            'system'     => $this->buildSystem(),
             'messages'   => $messages,
         ];
 
