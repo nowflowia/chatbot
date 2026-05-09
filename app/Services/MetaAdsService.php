@@ -96,6 +96,11 @@ class MetaAdsService
             }
         }
 
+        // Meta requires advantage_audience flag (1 = enabled / 0 = disabled)
+        if (!isset($targeting['targeting_automation']['advantage_audience'])) {
+            $targeting['targeting_automation'] = ['advantage_audience' => 0];
+        }
+
         $payload = [
             'name'              => $data['name'],
             'campaign_id'       => $data['campaign_id'],
