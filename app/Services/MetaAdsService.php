@@ -178,14 +178,17 @@ class MetaAdsService
 
     private function post(string $endpoint, array $payload): array
     {
-        $url = "{$this->base}/{$this->version}{$endpoint}";
-        $payload['access_token'] = $this->token;
-        $ch = curl_init($url);
+        // Meta Marketing API accepts JSON bodies — required for arrays/objects
+        // (http_build_query silently drops empty arrays like special_ad_categories:[])
+        $sep = str_contains($endpoint, '?') ? '&' : '?';
+        $url = "{$this->base}/{$this->version}{$endpoint}{$sep}access_token=" . urlencode($this->token);
+        $ch  = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => http_build_query($payload),
-            CURLOPT_TIMEOUT        => 20,
+            CURLOPT_POSTFIELDS     => json_encode($payload),
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            CURLOPT_TIMEOUT        => 30,
         ]);
         $body = curl_exec($ch);
         $err  = curl_error($ch);
