@@ -296,6 +296,11 @@ class AiService
 
     private function chatOpenAi(string $apiKey, string $model, string $system, string $user): string
     {
+        // Models that only support /v1/responses (gpt-5, o1, o3, o4 families)
+        if (preg_match('/^(gpt-5|o1|o3|o4)/i', $model)) {
+            return $this->chatOpenAiResponses($apiKey, $model, $system, $user);
+        }
+
         $payload = [
             'model'    => $model,
             'messages' => [
@@ -315,6 +320,10 @@ class AiService
         );
 
         if ($res['code'] !== 200) {
+            // Auto-fallback when OpenAI tells us this model only supports /v1/responses
+            if (stripos((string)$res['body'], 'v1/responses') !== false) {
+                return $this->chatOpenAiResponses($apiKey, $model, $system, $user);
+            }
             throw new \RuntimeException(
                 $this->extractError($res['body']) ?: "OpenAI HTTP {$res['code']}"
             );
@@ -322,6 +331,46 @@ class AiService
 
         $data = json_decode($res['body'], true) ?: [];
         return (string)($data['choices'][0]['message']['content'] ?? '');
+    }
+
+    private function chatOpenAiResponses(string $apiKey, string $model, string $system, string $user): string
+    {
+        $payload = [
+            'model' => $model,
+            'input' => [
+                ['role' => 'system', 'content' => $system],
+                ['role' => 'user',   'content' => $user],
+            ],
+        ];
+
+        $res = $this->httpRequest(
+            'POST',
+            'https://api.openai.com/v1/responses',
+            [
+                "Authorization: Bearer {$apiKey}",
+                'Content-Type: application/json',
+            ],
+            json_encode($payload)
+        );
+
+        if ($res['code'] !== 200) {
+            throw new \RuntimeException(
+                $this->extractError($res['body']) ?: "OpenAI HTTP {$res['code']}"
+            );
+        }
+
+        $data = json_decode($res['body'], true) ?: [];
+
+        // /v1/responses can return text in several shapes
+        if (!empty($data['output_text'])) {
+            return (string) $data['output_text'];
+        }
+        foreach (($data['output'] ?? []) as $item) {
+            foreach (($item['content'] ?? []) as $block) {
+                if (!empty($block['text'])) return (string) $block['text'];
+            }
+        }
+        return '';
     }
 
     private function chatAnthropic(string $apiKey, string $model, string $system, string $user): string
