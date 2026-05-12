@@ -32,6 +32,7 @@ class MetaAdSetting extends Model
             'api_version'         => $data['api_version']         ?? 'v21.0',
             'ai_model'            => $data['ai_model']            ?? 'claude-sonnet-4-6',
             'agent_persona'       => $data['agent_persona']       ?? null,
+            'image_model'         => $data['image_model']         ?? 'gpt-image-1',
             'updated_at'          => now(),
         ];
 

@@ -21,14 +21,15 @@ class MetaAdminController extends Controller
     public function index(Request $request): string
     {
         $this->requireAdmin();
-        $ai     = AiSetting::get('anthropic');
-        $openai = AiSetting::get('openai');
+        $ai       = AiSetting::get('anthropic');
+        $openai   = AiSetting::get('openai');
+        $metaCfg  = MetaAdSetting::getActive() ?? [];
         return $this->view('meta_admin/index', [
-            'settings'       => MetaAdSetting::getActive() ?? [],
+            'settings'       => $metaCfg,
             'aiConfigured'   => !empty($ai['api_key']),
             'openaiKey'      => !empty($openai['api_key']) ? substr($openai['api_key'], 0, 7) . '••••••••••••' : '',
             'openaiOk'       => !empty($openai['api_key']),
-            'openaiModel'    => $openai['model'] ?? 'gpt-image-1',
+            'openaiModel'    => $metaCfg['image_model'] ?? 'gpt-image-1',
             'aiModels'       => \App\Services\MetaAgentService::MODELS,
             'imageModels'    => \App\Services\ImageGenerationService::MODELS,
         ]);
@@ -98,7 +99,20 @@ class MetaAdminController extends Controller
         if (!array_key_exists($model, \App\Services\ImageGenerationService::MODELS)) {
             $model = 'gpt-image-1';
         }
-        AiSetting::save('openai', ['api_key' => $key, 'model' => $model, 'is_active' => 1]);
+
+        // Save API key in ai_settings (preserves chat model intact)
+        $existingOpenAi = AiSetting::get('openai');
+        $chatModel      = $existingOpenAi['model'] ?? 'gpt-4o-mini';
+        AiSetting::save('openai', ['api_key' => $key, 'model' => $chatModel, 'is_active' => 1]);
+
+        // Save image model in meta_ad_settings (META-specific, no conflict with chat)
+        $existingMeta = MetaAdSetting::getActive();
+        if ($existingMeta) {
+            MetaAdSetting::saveSettings(array_merge($existingMeta, ['image_model' => $model]));
+        } else {
+            MetaAdSetting::saveSettings(['image_model' => $model]);
+        }
+
         $this->jsonSuccess('Configurações de imagem salvas!');
     }
 

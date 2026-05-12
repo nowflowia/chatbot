@@ -29,7 +29,13 @@ class ImageGenerationService
     {
         $row          = AiSetting::get('openai');
         $this->apiKey = $row['api_key'] ?? '';
-        $this->model  = !empty($row['model']) ? $row['model'] : self::DEFAULT_MODEL;
+
+        // Image model is META-specific — kept in meta_ad_settings.image_model
+        // so it does NOT overwrite the chat model in ai_settings.openai.model
+        $metaRow      = \App\Models\MetaAdSetting::getActive();
+        $imageModel   = $metaRow['image_model'] ?? self::DEFAULT_MODEL;
+        if (!array_key_exists($imageModel, self::MODELS)) $imageModel = self::DEFAULT_MODEL;
+        $this->model  = $imageModel;
     }
 
     public function getModel(): string { return $this->model; }
